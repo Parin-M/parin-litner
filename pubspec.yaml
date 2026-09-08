@@ -1,0 +1,18 @@
+name: parin_litner
+description: Parin Litner v2 - modern Persian spaced repetition / Leitner learning app.
+publish_to: 'none'
+version: 2.0.0+2
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/parin_litner_ui_reference.png
