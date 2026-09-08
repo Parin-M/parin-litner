@@ -252,20 +252,309 @@ class _DeckDetailPageState extends State<DeckDetailPage> {
   Future<void> addCard(BuildContext context) async { final front = TextEditingController(); final back = TextEditingController(); final tag = TextEditingController(); await showDialog(context: context, builder: (_) => AlertDialog(title: const Text('کارت جدید'), content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: front, decoration: const InputDecoration(labelText: 'روی کارت')), TextField(controller: back, decoration: const InputDecoration(labelText: 'پشت کارت')), TextField(controller: tag, decoration: const InputDecoration(labelText: 'برچسب (اختیاری)'))]), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('لغو')), FilledButton(onPressed: () { if (front.text.trim().isNotEmpty && back.text.trim().isNotEmpty) widget.store.addCard(widget.deckIndex, front.text.trim(), back.text.trim(), tag: tag.text.trim()); Navigator.pop(context); setState(() {}); }, child: const Text('ذخیره'))])); }
 }
 
-class StudyPage extends StatefulWidget { const StudyPage({super.key, required this.store, required this.deckIndex}); final AppStore store; final int deckIndex; static void open(BuildContext c, AppStore s, int i) => Navigator.push(c, MaterialPageRoute(builder: (_) => StudyPage(store: s, deckIndex: i))); @override State<StudyPage> createState() => _StudyPageState(); }
-class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMixin {
-  int current = 0; bool flipped = false; late AnimationController pulse;
-  @override void initState() { super.initState(); pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true); }
-  @override void dispose() { pulse.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) { final deck = widget.store.decks[widget.deckIndex]; final due = deck.cards.where((c) => c.dueAt.isBefore(DateTime.now()) || c.dueAt.isAtSameMomentAs(DateTime.now())).toList(); final cards = due.isEmpty ? deck.cards : due; if (cards.isEmpty) return Scaffold(appBar: AppBar(), body: const Center(child: Text('این دسته هنوز کارتی ندارد.'))); current %= cards.length; final card = cards[current]; return Scaffold(body: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 18), child: Column(children: [Row(children: [IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)), Expanded(child: LinearProgressIndicator(value: (current + 1) / cards.length, minHeight: 7, borderRadius: BorderRadius.circular(7))), const SizedBox(width: 12), Text('${current + 1}/${cards.length}')]), const SizedBox(height: 30), Expanded(child: GestureDetector(onTap: () => setState(() => flipped = !flipped), child: AnimatedBuilder(animation: pulse, builder: (_, __) { final glow = 0.04 + pulse.value * 0.06; return Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(30), boxShadow: [BoxShadow(color: const Color(0xFF7C6CFF).withOpacity(glow), blurRadius: 35, spreadRadius: 3)]), child: TweenAnimationBuilder<double>(tween: Tween(begin: 0, end: flipped ? 1 : 0), duration: const Duration(milliseconds: 650), curve: Curves.easeOutBack, builder: (_, v, __) => Transform(perspective: 0.0014, alignment: Alignment.center, transform: Matrix4.identity()..rotateY(math.pi * v), child: GlassCard(child: Center(child: Transform(alignment: Alignment.center, transform: Matrix4.identity()..rotateY(v > .5 ? math.pi : 0), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [if (card.tag.isNotEmpty) Chip(label: Text(card.tag)), Padding(padding: const EdgeInsets.all(18), child: Text(v > .5 ? card.back : card.front, textAlign: TextAlign.center, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900))), Text(v > .5 ? 'پاسخ • باکس ${card.box}' : 'برای دیدن پاسخ لمس کن', style: const TextStyle(color: Colors.white54))]))))))); }))), const SizedBox(height: 20), Row(children: [RateButton('دوباره', '1m', Icons.refresh_rounded, () => next(card, 1)), RateButton('سخت', '${math.max(1, card.intervalDays)}d', Icons.bolt_rounded, () => next(card, 2)), RateButton('خوب', '${math.max(1, card.intervalDays * 2)}d', Icons.check_rounded, () => next(card, 3)), RateButton('آسان', '${math.max(2, card.intervalDays * 4)}d', Icons.auto_awesome_rounded, () => next(card, 4))])])))); }
-  void next(CardItem card, int rating) { widget.store.review(card, rating); setState(() { current++; flipped = false; }); }
+class StudyPage extends StatefulWidget {
+  const StudyPage({super.key, required this.store, required this.deckIndex});
+
+  final AppStore store;
+  final int deckIndex;
+
+  static void open(BuildContext context, AppStore store, int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudyPage(store: store, deckIndex: index),
+      ),
+    );
+  }
+
+  @override
+  State<StudyPage> createState() => _StudyPageState();
+}
+
+class _StudyPageState extends State<StudyPage>
+    with SingleTickerProviderStateMixin {
+  int current = 0;
+  bool flipped = false;
+  late final AnimationController pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final deck = widget.store.decks[widget.deckIndex];
+    final now = DateTime.now();
+    final due = deck.cards
+        .where((c) => c.dueAt.isBefore(now) || c.dueAt.isAtSameMomentAs(now))
+        .toList();
+    final cards = due.isEmpty ? deck.cards : due;
+
+    if (cards.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: Text('این دسته هنوز کارتی ندارد.')),
+      );
+    }
+
+    current %= cards.length;
+    final card = cards[current];
+
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: (current + 1) / cards.length,
+                      minHeight: 7,
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('${current + 1}/${cards.length}'),
+                ],
+              ),
+              const SizedBox(height: 30),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => flipped = !flipped),
+                  child: AnimatedBuilder(
+                    animation: pulse,
+                    builder: (_, __) {
+                      final glow = 0.04 + pulse.value * 0.06;
+                      return Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF7C6CFF)
+                                  .withOpacity(glow),
+                              blurRadius: 35,
+                              spreadRadius: 3,
+                            ),
+                          ],
+                        ),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: flipped ? 1 : 0),
+                          duration: const Duration(milliseconds: 650),
+                          curve: Curves.easeOutBack,
+                          builder: (_, value, __) {
+                            final transform = Matrix4.identity()
+                              ..setEntry(3, 2, 0.0014)
+                              ..rotateY(math.pi * value);
+
+                            return Transform(
+                              alignment: Alignment.center,
+                              transform: transform,
+                              child: GlassCard(
+                                child: Center(
+                                  child: Transform(
+                                    alignment: Alignment.center,
+                                    transform: Matrix4.identity()
+                                      ..rotateY(value > .5 ? math.pi : 0),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        if (card.tag.isNotEmpty)
+                                          Chip(label: Text(card.tag)),
+                                        Padding(
+                                          padding: const EdgeInsets.all(18),
+                                          child: Text(
+                                            value > .5
+                                                ? card.back
+                                                : card.front,
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          value > .5
+                                              ? 'پاسخ • باکس ${card.box}'
+                                              : 'برای دیدن پاسخ لمس کن',
+                                          style: const TextStyle(
+                                            color: Colors.white54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  RateButton(
+                    'دوباره',
+                    '1m',
+                    Icons.refresh_rounded,
+                    () => next(card, 1),
+                  ),
+                  RateButton(
+                    'سخت',
+                    '${math.max(1, card.intervalDays)}d',
+                    Icons.bolt_rounded,
+                    () => next(card, 2),
+                  ),
+                  RateButton(
+                    'خوب',
+                    '${math.max(1, card.intervalDays * 2)}d',
+                    Icons.check_rounded,
+                    () => next(card, 3),
+                  ),
+                  RateButton(
+                    'آسان',
+                    '${math.max(2, card.intervalDays * 4)}d',
+                    Icons.auto_awesome_rounded,
+                    () => next(card, 4),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void next(CardItem card, int rating) {
+    widget.store.review(card, rating);
+    setState(() {
+      current++;
+      flipped = false;
+    });
+  }
 }
 class RateButton extends StatelessWidget { const RateButton(this.title, this.time, this.icon, this.onTap, {super.key}); final String title, time; final IconData icon; final VoidCallback onTap; @override Widget build(BuildContext c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: GlassCard(onTap: onTap, padding: const EdgeInsets.symmetric(vertical: 12), child: Column(children: [Icon(icon, size: 19), const SizedBox(height: 4), Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)), Text(time, style: const TextStyle(fontSize: 10, color: Colors.white54))])))); }
 
 class StatsPage extends StatelessWidget { const StatsPage({super.key, required this.store}); final AppStore store; @override Widget build(BuildContext context) { final total = store.totalCards; final learned = store.learnedCount; return ListView(padding: const EdgeInsets.fromLTRB(20, 18, 20, 120), children: [const Text('آمار', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)), const SizedBox(height: 20), GlassCard(child: Column(children: [SizedBox(height: 170, child: CustomPaint(painter: ChartPainter(), child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text('${total == 0 ? 0 : ((learned / total) * 100).round()}٪', style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900)), const Text('سطح یادگیری', style: TextStyle(color: Colors.white54))])))), const Divider(height: 28), Row(children: [Metric('📚', '$total', 'کل کارت‌ها'), Metric('✓', '$learned', 'یادگرفته'), Metric('⏳', '${store.dueCount}', 'برای مرور')])])), const SizedBox(height: 14), GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('جعبه‌های لایتنر', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)), const SizedBox(height: 14), ...List.generate(5, (i) { final count = store.decks.fold(0, (a, d) => a + d.cards.where((c) => c.box == i + 1).length); final ratio = total == 0 ? 0.0 : count / total; return Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [SizedBox(width: 54, child: Text('باکس ${i + 1}')), Expanded(child: LinearProgressIndicator(value: ratio, minHeight: 7, borderRadius: BorderRadius.circular(7))), const SizedBox(width: 10), Text('$count')])) })]))]); } }
 class ChartPainter extends CustomPainter { @override void paint(Canvas c, Size s) { final p = Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0xFF65C8FF); final path = Path(); for (var i = 0; i <= 40; i++) { final x = s.width * i / 40; final y = s.height * (.72 - (.18 * math.sin(i * .42) + i / 40 * .45)); if (i == 0) path.moveTo(x, y); else path.lineTo(x, y); } c.drawPath(path, p); } @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false; }
 
-class ProfilePage extends StatelessWidget { const ProfilePage({super.key, required this.store}); final AppStore store; @override Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(20, 18, 20, 120), children: [GlassCard(child: Column(children: [const CircleAvatar(radius: 38, child: Icon(Icons.person_rounded, size: 38)), const SizedBox(height: 12), const Text('Parin', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), const Text('Learner • Level 5', style: TextStyle(color: Colors.white54)), const SizedBox(height: 15), LinearProgressIndicator(value: (store.xp % 2000) / 2000, minHeight: 7, borderRadius: BorderRadius.circular(7)), const SizedBox(height: 7), Text('${store.xp % 2000} / 2,000 XP')]))), const SizedBox(height: 14), GlassCard(child: Column(children: [SettingTile(Icons.notifications_none_rounded, 'یادآوری مرور', store.reminderEnabled ? 'فعال' : 'خاموش', onTap: () async { store.reminderEnabled = !store.reminderEnabled; await store.save(); }), SettingTile(Icons.schedule_rounded, 'زمان مرور', '${store.reminderHour.toString().padLeft(2, '0')}:${store.reminderMinute.toString().padLeft(2, '0')}', onTap: () async { final t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: store.reminderHour, minute: store.reminderMinute)); if (t != null) { store.reminderHour = t.hour; store.reminderMinute = t.minute; await store.save(); } }), SettingTile(Icons.palette_outlined, 'ظاهر', store.darkMode ? 'تیره' : 'روشن', onTap: store.toggleTheme), SettingTile(Icons.import_export_rounded, 'ورود / خروجی', 'JSON', onTap: () => showDataDialog(context)), SettingTile(Icons.info_outline_rounded, 'نسخه', '2.0.0', onTap: null)]))]); }
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key, required this.store});
+
+  final AppStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+      children: [
+        GlassCard(
+          child: Column(
+            children: [
+              const CircleAvatar(
+                radius: 38,
+                child: Icon(Icons.person_rounded, size: 38),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Parin',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+              const Text(
+                'Learner • Level 5',
+                style: TextStyle(color: Colors.white54),
+              ),
+              const SizedBox(height: 15),
+              LinearProgressIndicator(
+                value: (store.xp % 2000) / 2000,
+                minHeight: 7,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              const SizedBox(height: 7),
+              Text('${store.xp % 2000} / 2,000 XP'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        GlassCard(
+          child: Column(
+            children: [
+              SettingTile(
+                Icons.notifications_none_rounded,
+                'یادآوری مرور',
+                store.reminderEnabled ? 'فعال' : 'خاموش',
+                onTap: () async {
+                  store.reminderEnabled = !store.reminderEnabled;
+                  await store.save();
+                },
+              ),
+              SettingTile(
+                Icons.schedule_rounded,
+                'زمان مرور',
+                '${store.reminderHour.toString().padLeft(2, '0')}:${store.reminderMinute.toString().padLeft(2, '0')}',
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay(
+                      hour: store.reminderHour,
+                      minute: store.reminderMinute,
+                    ),
+                  );
+                  if (time != null) {
+                    store.reminderHour = time.hour;
+                    store.reminderMinute = time.minute;
+                    await store.save();
+                  }
+                },
+              ),
+              SettingTile(
+                Icons.palette_outlined,
+                'ظاهر',
+                store.darkMode ? 'تیره' : 'روشن',
+                onTap: store.toggleTheme,
+              ),
+              SettingTile(
+                Icons.import_export_rounded,
+                'ورود / خروجی',
+                'JSON',
+                onTap: () => showDataDialog(context),
+              ),
+              const SettingTile(
+                Icons.info_outline_rounded,
+                'نسخه',
+                '3.0.0',
+                onTap: null,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class SettingTile extends StatelessWidget { const SettingTile(this.icon, this.title, this.value, {super.key, required this.onTap}); final IconData icon; final String title, value; final VoidCallback? onTap; @override Widget build(BuildContext c) => ListTile(onTap: onTap, leading: Icon(icon), title: Text(title), subtitle: Text(value, style: const TextStyle(color: Colors.white54)), trailing: const Icon(Icons.chevron_left_rounded)); }
 
@@ -274,7 +563,7 @@ AppStore _findStore(BuildContext context) => (context.findAncestorWidgetOfExactT
 
 class ParinLitnerInherited extends InheritedWidget { const ParinLitnerInherited({super.key, required this.store, required super.child}); final AppStore store; @override bool updateShouldNotify(covariant ParinLitnerInherited oldWidget) => oldWidget.store != store; }
 
-class GlassNav extends StatelessWidget { const GlassNav({super.key, required this.index, required this.onTap}); final int index; final ValueChanged<int> onTap; @override Widget build(BuildContext c) => ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(28)), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18), child: BottomAppBar(shape: const CircularNotchedRectangle(), notchMargin: 8, color: Theme.of(c).brightness == Brightness.dark ? const Color(0xDD0B1628) : const Color(0xE8FFFFFF), child: SizedBox(height: 62, child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [NavItem(Icons.home_rounded, 'خانه', 0, index, onTap), NavItem(Icons.layers_rounded, 'دسته‌ها', 1, index, onTap), const SizedBox(width: 42), NavItem(Icons.bar_chart_rounded, 'آمار', 3, index, onTap), NavItem(Icons.person_rounded, 'پروفایل', 4, index, onTap)])))); }
+class GlassNav extends StatelessWidget { const GlassNav({super.key, required this.index, required this.onTap}); final int index; final ValueChanged<int> onTap; @override Widget build(BuildContext c) => ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(28)), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18), child: BottomAppBar(shape: const CircularNotchedRectangle(), notchMargin: 8, color: Theme.of(c).brightness == Brightness.dark ? const Color(0xDD0B1628) : const Color(0xE8FFFFFF), child: SizedBox(height: 62, child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [NavItem(Icons.home_rounded, 'خانه', 0, index, onTap), NavItem(Icons.layers_rounded, 'دسته‌ها', 1, index, onTap), const SizedBox(width: 42), NavItem(Icons.bar_chart_rounded, 'آمار', 3, index, onTap), NavItem(Icons.person_rounded, 'پروفایل', 4, index, onTap)]))))); }
 class NavItem extends StatelessWidget { const NavItem(this.icon, this.label, this.i, this.selected, this.onTap, {super.key}); final IconData icon; final String label; final int i, selected; final ValueChanged<int> onTap; @override Widget build(BuildContext c) { final active = i == selected; return InkWell(onTap: () => onTap(i), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 21, color: active ? const Color(0xFF9C8DFF) : Colors.white54), Text(label, style: TextStyle(fontSize: 10, color: active ? const Color(0xFF9C8DFF) : Colors.white54, fontWeight: active ? FontWeight.w800 : FontWeight.w400))]))); } }
 class LogoMark extends StatelessWidget {
   const LogoMark({super.key, this.size = 44});
