@@ -245,11 +245,208 @@ class _DecksPageState extends State<DecksPage> {
   @override Widget build(BuildContext context) { final list = widget.store.decks.where((d) => d.name.toLowerCase().contains(query.toLowerCase())).toList(); return ListView(padding: const EdgeInsets.fromLTRB(20, 18, 20, 120), children: [const Text('دسته‌ها', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)), const SizedBox(height: 6), const Text('مدیریت درس‌ها و کارت‌های تو', style: TextStyle(color: Colors.white54)), const SizedBox(height: 16), TextField(onChanged: (v) => setState(() => query = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'جستجوی دسته‌ها')), const SizedBox(height: 16), ...list.map((deck) { final i = widget.store.decks.indexOf(deck); return Padding(padding: const EdgeInsets.only(bottom: 12), child: GlassCard(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DeckDetailPage(store: widget.store, deckIndex: i))), child: Row(children: [Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white.withOpacity(.07), borderRadius: BorderRadius.circular(16)), child: Icon(deck.icon)), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(deck.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)), Text('${deck.cards.length} کارت • ${(deck.progress * 100).round()}٪ پیشرفت', style: const TextStyle(fontSize: 12, color: Colors.white54)), const SizedBox(height: 9), LinearProgressIndicator(value: deck.progress, minHeight: 5, borderRadius: BorderRadius.circular(5))])), PopupMenuButton<String>(onSelected: (v) { if (v == 'delete') { widget.store.deleteDeck(i); setState(() {}); } }, itemBuilder: (_) => const [PopupMenuItem(value: 'delete', child: Text('حذف دسته'))])]))); })]); }
 }
 
-class DeckDetailPage extends StatefulWidget { const DeckDetailPage({super.key, required this.store, required this.deckIndex}); final AppStore store; final int deckIndex; @override State<DeckDetailPage> createState() => _DeckDetailPageState(); }
+class DeckDetailPage extends StatefulWidget {
+  const DeckDetailPage({super.key, required this.store, required this.deckIndex});
+
+  final AppStore store;
+  final int deckIndex;
+
+  @override
+  State<DeckDetailPage> createState() => _DeckDetailPageState();
+}
+
 class _DeckDetailPageState extends State<DeckDetailPage> {
   String query = '';
-  @override Widget build(BuildContext context) { final deck = widget.store.decks[widget.deckIndex]; final cards = deck.cards.where((c) => c.front.toLowerCase().contains(query.toLowerCase()) || c.back.contains(query) || c.tag.toLowerCase().contains(query.toLowerCase())).toList(); return Scaffold(appBar: AppBar(title: Text(deck.name), actions: [IconButton(onPressed: () => StudyPage.open(context, widget.store, widget.deckIndex), icon: const Icon(Icons.play_circle_outline_rounded))]), floatingActionButton: FloatingActionButton(onPressed: () => addCard(context), child: const Icon(Icons.add_rounded)), body: ListView(padding: const EdgeInsets.fromLTRB(20, 10, 20, 100), children: [TextField(onChanged: (v) => setState(() => query = v), decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'جستجوی کارت')), const SizedBox(height: 14), GlassCard(child: Row(children: [Expanded(child: Text('${deck.cards.length} کارت', style: const TextStyle(fontWeight: FontWeight.w800))), Text('${(deck.progress * 100).round()}٪ یادگیری')]))), const SizedBox(height: 12), ...cards.map((card) { final ci = deck.cards.indexOf(card); return Padding(padding: const EdgeInsets.only(bottom: 10), child: GlassCard(child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(card.front, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)), const SizedBox(height: 4), Text(card.back, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60)), const SizedBox(height: 7), Wrap(spacing: 6, children: [Chip(label: Text('باکس ${card.box}')), if (card.tag.isNotEmpty) Chip(label: Text(card.tag)), Chip(label: Text(card.dueAt.isBefore(DateTime.now()) ? 'آماده مرور' : '${card.intervalDays} روز دیگر'))])])), IconButton(onPressed: () { widget.store.deleteCard(widget.deckIndex, ci); setState(() {}); }, icon: const Icon(Icons.delete_outline_rounded))]))); })]); }
-  Future<void> addCard(BuildContext context) async { final front = TextEditingController(); final back = TextEditingController(); final tag = TextEditingController(); await showDialog(context: context, builder: (_) => AlertDialog(title: const Text('کارت جدید'), content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: front, decoration: const InputDecoration(labelText: 'روی کارت')), TextField(controller: back, decoration: const InputDecoration(labelText: 'پشت کارت')), TextField(controller: tag, decoration: const InputDecoration(labelText: 'برچسب (اختیاری)'))]), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('لغو')), FilledButton(onPressed: () { if (front.text.trim().isNotEmpty && back.text.trim().isNotEmpty) widget.store.addCard(widget.deckIndex, front.text.trim(), back.text.trim(), tag: tag.text.trim()); Navigator.pop(context); setState(() {}); }, child: const Text('ذخیره'))])); }
+
+  @override
+  Widget build(BuildContext context) {
+    final deck = widget.store.decks[widget.deckIndex];
+    final normalizedQuery = query.trim().toLowerCase();
+    final cards = deck.cards.where((card) {
+      if (normalizedQuery.isEmpty) return true;
+      return card.front.toLowerCase().contains(normalizedQuery) ||
+          card.back.toLowerCase().contains(normalizedQuery) ||
+          card.tag.toLowerCase().contains(normalizedQuery);
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(deck.name),
+        actions: [
+          IconButton(
+            tooltip: 'شروع مرور',
+            onPressed: () => StudyPage.open(
+              context,
+              widget.store,
+              widget.deckIndex,
+            ),
+            icon: const Icon(Icons.play_circle_outline_rounded),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => addCard(context),
+        child: const Icon(Icons.add_rounded),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+        children: [
+          TextField(
+            onChanged: (value) => setState(() => query = value),
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search_rounded),
+              hintText: 'جستجوی کارت',
+            ),
+          ),
+          const SizedBox(height: 14),
+          GlassCard(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${deck.cards.length} کارت',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Text('${(deck.progress * 100).round()}٪ یادگیری'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (cards.isEmpty)
+            const GlassCard(
+              child: Center(child: Text('کارتی پیدا نشد.')),
+            )
+          else
+            ...cards.map((card) {
+              final cardIndex = deck.cards.indexOf(card);
+              final isDue = card.dueAt.isBefore(DateTime.now()) ||
+                  card.dueAt.isAtSameMomentAs(DateTime.now());
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: GlassCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              card.front,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              card.back,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white60),
+                            ),
+                            const SizedBox(height: 7),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                Chip(label: Text('باکس ${card.box}')),
+                                if (card.tag.isNotEmpty)
+                                  Chip(label: Text(card.tag)),
+                                Chip(
+                                  label: Text(
+                                    isDue
+                                        ? 'آماده مرور'
+                                        : '${card.intervalDays} روز دیگر',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'حذف کارت',
+                        onPressed: () {
+                          widget.store.deleteCard(widget.deckIndex, cardIndex);
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.delete_outline_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Future<void> addCard(BuildContext context) async {
+    final front = TextEditingController();
+    final back = TextEditingController();
+    final tag = TextEditingController();
+
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('کارت جدید'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: front,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'روی کارت'),
+                ),
+                TextField(
+                  controller: back,
+                  decoration: const InputDecoration(labelText: 'پشت کارت'),
+                ),
+                TextField(
+                  controller: tag,
+                  decoration:
+                      const InputDecoration(labelText: 'برچسب (اختیاری)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('لغو'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final frontText = front.text.trim();
+                final backText = back.text.trim();
+                if (frontText.isEmpty || backText.isEmpty) return;
+
+                widget.store.addCard(
+                  widget.deckIndex,
+                  frontText,
+                  backText,
+                  tag: tag.text.trim(),
+                );
+                Navigator.pop(dialogContext);
+                setState(() {});
+              },
+              child: const Text('ذخیره'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      front.dispose();
+      back.dispose();
+      tag.dispose();
+    }
+  }
 }
 
 class StudyPage extends StatefulWidget {
@@ -458,7 +655,112 @@ class _StudyPageState extends State<StudyPage>
 }
 class RateButton extends StatelessWidget { const RateButton(this.title, this.time, this.icon, this.onTap, {super.key}); final String title, time; final IconData icon; final VoidCallback onTap; @override Widget build(BuildContext c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: GlassCard(onTap: onTap, padding: const EdgeInsets.symmetric(vertical: 12), child: Column(children: [Icon(icon, size: 19), const SizedBox(height: 4), Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)), Text(time, style: const TextStyle(fontSize: 10, color: Colors.white54))])))); }
 
-class StatsPage extends StatelessWidget { const StatsPage({super.key, required this.store}); final AppStore store; @override Widget build(BuildContext context) { final total = store.totalCards; final learned = store.learnedCount; return ListView(padding: const EdgeInsets.fromLTRB(20, 18, 20, 120), children: [const Text('آمار', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)), const SizedBox(height: 20), GlassCard(child: Column(children: [SizedBox(height: 170, child: CustomPaint(painter: ChartPainter(), child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text('${total == 0 ? 0 : ((learned / total) * 100).round()}٪', style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900)), const Text('سطح یادگیری', style: TextStyle(color: Colors.white54))])))), const Divider(height: 28), Row(children: [Metric('📚', '$total', 'کل کارت‌ها'), Metric('✓', '$learned', 'یادگرفته'), Metric('⏳', '${store.dueCount}', 'برای مرور')])])), const SizedBox(height: 14), GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('جعبه‌های لایتنر', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)), const SizedBox(height: 14), ...List.generate(5, (i) { final count = store.decks.fold(0, (a, d) => a + d.cards.where((c) => c.box == i + 1).length); final ratio = total == 0 ? 0.0 : count / total; return Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [SizedBox(width: 54, child: Text('باکس ${i + 1}')), Expanded(child: LinearProgressIndicator(value: ratio, minHeight: 7, borderRadius: BorderRadius.circular(7))), const SizedBox(width: 10), Text('$count')])) })]))]); } }
+class StatsPage extends StatelessWidget {
+  const StatsPage({super.key, required this.store});
+
+  final AppStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = store.totalCards;
+    final learned = store.learnedCount;
+    final learningPercent = total == 0 ? 0 : ((learned / total) * 100).round();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+      children: [
+        const Text(
+          'آمار',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 20),
+        GlassCard(
+          child: Column(
+            children: [
+              SizedBox(
+                height: 170,
+                child: CustomPaint(
+                  painter: ChartPainter(),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$learningPercent٪',
+                          style: const TextStyle(
+                            fontSize: 38,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const Text(
+                          'سطح یادگیری',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const Divider(height: 28),
+              Row(
+                children: [
+                  Metric('📚', '$total', 'کل کارت‌ها'),
+                  Metric('✓', '$learned', 'یادگرفته'),
+                  Metric('⏳', '${store.dueCount}', 'برای مرور'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'جعبه‌های لایتنر',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 14),
+              ...List.generate(5, (index) {
+                final boxNumber = index + 1;
+                final count = store.decks.fold<int>(
+                  0,
+                  (sum, deck) =>
+                      sum +
+                      deck.cards.where((card) => card.box == boxNumber).length,
+                );
+                final ratio = total == 0 ? 0.0 : count / total;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 54,
+                        child: Text('باکس $boxNumber'),
+                      ),
+                      Expanded(
+                        child: LinearProgressIndicator(
+                          value: ratio,
+                          minHeight: 7,
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text('$count'),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class ChartPainter extends CustomPainter { @override void paint(Canvas c, Size s) { final p = Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0xFF65C8FF); final path = Path(); for (var i = 0; i <= 40; i++) { final x = s.width * i / 40; final y = s.height * (.72 - (.18 * math.sin(i * .42) + i / 40 * .45)); if (i == 0) path.moveTo(x, y); else path.lineTo(x, y); } c.drawPath(path, p); } @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false; }
 
 class ProfilePage extends StatelessWidget {
