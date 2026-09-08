@@ -173,7 +173,30 @@ class Deck {
   List<CardItem> cards;
   double get progress => cards.isEmpty ? 0 : cards.where((c) => c.box >= 3).length / cards.length;
   Map<String, dynamic> toJson() => {'name': name, 'icon': icon.codePoint, 'cards': cards.map((e) => e.toJson()).toList()};
-  factory Deck.fromJson(Map<String, dynamic> j) => Deck(name: j['name'] as String, icon: IconData((j['icon'] as num?)?.toInt() ?? Icons.layers_rounded.codePoint, fontFamily: 'MaterialIcons'), cards: (j['cards'] as List? ?? []).map((e) => CardItem.fromJson(Map<String, dynamic>.from(e))).toList());
+  factory Deck.fromJson(Map<String, dynamic> j) {
+    final iconCode = (j['icon'] as num?)?.toInt();
+    return Deck(
+      name: j['name'] as String? ?? 'دسته جدید',
+      icon: _iconFromCode(iconCode),
+      cards: (j['cards'] as List? ?? [])
+          .map((e) => CardItem.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList(),
+    );
+  }
+
+  static IconData _iconFromCode(int? code) {
+    switch (code) {
+      case 0xe8b6: return Icons.language_rounded;
+      case 0xe3a0: return Icons.eco_rounded;
+      case 0xe86f: return Icons.code_rounded;
+      case 0xe8b8: return Icons.functions_rounded;
+      case 0xe8b9: return Icons.auto_awesome_rounded;
+      case 0xe88a: return Icons.layers_rounded;
+      case 0xe80b: return Icons.school_rounded;
+      case 0xe7fd: return Icons.person_rounded;
+      default: return Icons.layers_rounded;
+    }
+  }
 }
 
 class CardItem {
