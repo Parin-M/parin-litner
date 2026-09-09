@@ -14,7 +14,8 @@ class AppTheme {
   ];
 
   static ThemeData light(int index) {
-    final t = themes[index.clamp(0, themes.length - 1)];
+    final safeIndex = index.clamp(0, themes.length - 1).toInt();
+    final t = themes[safeIndex];
     final scheme = ColorScheme.fromSeed(seedColor: t.primary, brightness: Brightness.light);
     return ThemeData(
       useMaterial3: true,
