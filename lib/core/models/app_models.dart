@@ -6,7 +6,7 @@ class LeitnerBox {
   Map<String, dynamic> toJson() => {'id': id, 'name': name, 'color': colorValue};
   factory LeitnerBox.fromJson(Map<String, dynamic> j) => LeitnerBox(
         id: j['id'] as String,
-        name: j['name'] as String,
+        name: j['name'] as String? ?? 'Box',
         colorValue: (j['color'] as num?)?.toInt() ?? 0xFF6C63FF,
       );
 }
@@ -21,10 +21,39 @@ class FlashCard {
   bool favorite;
   int reviews;
   int lapses;
-  FlashCard({required this.id, required this.front, required this.back, this.tags = '', this.boxIndex = 0, DateTime? dueAt, this.favorite = false, this.reviews = 0, this.lapses = 0}) : dueAt = dueAt ?? DateTime.now();
-  Map<String, dynamic> toJson() => {'id': id, 'front': front, 'back': back, 'tags': tags, 'box': boxIndex, 'due': dueAt.toIso8601String(), 'favorite': favorite, 'reviews': reviews, 'lapses': lapses};
+  String? frontImage;
+  String? backImage;
+
+  FlashCard({
+    required this.id,
+    required this.front,
+    required this.back,
+    this.tags = '',
+    this.boxIndex = 0,
+    DateTime? dueAt,
+    this.favorite = false,
+    this.reviews = 0,
+    this.lapses = 0,
+    this.frontImage,
+    this.backImage,
+  }) : dueAt = dueAt ?? DateTime.now();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'front': front,
+        'back': back,
+        'tags': tags,
+        'box': boxIndex,
+        'due': dueAt.toIso8601String(),
+        'favorite': favorite,
+        'reviews': reviews,
+        'lapses': lapses,
+        'frontImage': frontImage,
+        'backImage': backImage,
+      };
+
   factory FlashCard.fromJson(Map<String, dynamic> j) => FlashCard(
-        id: j['id'] as String,
+        id: j['id'] as String? ?? DateTime.now().microsecondsSinceEpoch.toString(),
         front: j['front'] as String? ?? '',
         back: j['back'] as String? ?? '',
         tags: j['tags'] as String? ?? '',
@@ -33,6 +62,8 @@ class FlashCard {
         favorite: j['favorite'] as bool? ?? false,
         reviews: (j['reviews'] as num?)?.toInt() ?? 0,
         lapses: (j['lapses'] as num?)?.toInt() ?? 0,
+        frontImage: j['frontImage'] as String?,
+        backImage: j['backImage'] as String?,
       );
 }
 
@@ -55,9 +86,17 @@ class Deck {
         LeitnerBox(id: 'b5', name: 'خانه ۵', colorValue: 0xFFEF5350),
       ];
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'description': description, 'color': colorHex, 'cards': cards.map((e) => e.toJson()).toList(), 'boxes': boxes.map((e) => e.toJson()).toList()};
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'color': colorHex,
+        'cards': cards.map((e) => e.toJson()).toList(),
+        'boxes': boxes.map((e) => e.toJson()).toList(),
+      };
+
   factory Deck.fromJson(Map<String, dynamic> j) => Deck(
-        id: j['id'] as String,
+        id: j['id'] as String? ?? DateTime.now().microsecondsSinceEpoch.toString(),
         name: j['name'] as String? ?? 'دسته بدون نام',
         description: j['description'] as String? ?? '',
         colorHex: j['color'] as String? ?? '6C63FF',
