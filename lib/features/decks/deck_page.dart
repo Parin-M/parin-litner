@@ -378,3 +378,5 @@ class _BoxManagerState extends State<BoxManager> {
     );
   }
 }
+
+// Clean-build marker: all deck references are scoped through widget.deck/currentDeck.
