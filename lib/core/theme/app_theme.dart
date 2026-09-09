@@ -19,6 +19,7 @@ class AppTheme {
     final selected = themes[safeIndex];
     final seed = selected.primary;
     final scheme = ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.light);
+    final surface = selected.pureGlass ? Colors.white.withValues(alpha: .88) : Colors.white.withValues(alpha: glass ? .94 : 1);
 
     return ThemeData(
       useMaterial3: false,
@@ -36,8 +37,8 @@ class AppTheme {
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      cardTheme: CardTheme(
-        color: Colors.white.withOpacity(selected.pureGlass ? .88 : (glass ? .94 : 1)),
+      cardTheme: CardThemeData(
+        color: surface,
         elevation: selected.pureGlass ? 1 : 2,
         margin: const EdgeInsets.symmetric(vertical: 4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
@@ -54,17 +55,12 @@ class AppTheme {
       dividerTheme: const DividerThemeData(thickness: 1, space: 1),
       listTileTheme: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 2), dense: false),
       floatingActionButtonTheme: FloatingActionButtonThemeData(backgroundColor: seed, foregroundColor: Colors.white, elevation: 6, shape: const CircleBorder()),
-      buttonTheme: ButtonThemeData(
-        buttonColor: seed,
-        textTheme: ButtonTextTheme.primary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
-        materialTapTargetSize: MaterialTapTargetSize.padded,
-      ),
+      buttonTheme: ButtonThemeData(buttonColor: seed, textTheme: ButtonTextTheme.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)), materialTapTargetSize: MaterialTapTargetSize.padded),
       elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(backgroundColor: seed, foregroundColor: Colors.white, elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)), padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12))),
-      outlinedButtonTheme: OutlinedButtonThemeData(style: OutlinedButton.styleFrom(foregroundColor: seed, side: BorderSide(color: seed.withOpacity(.5)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11))),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: OutlinedButton.styleFrom(foregroundColor: seed, side: BorderSide(color: seed.withValues(alpha: .5)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11))),
       textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: seed, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)))),
-      switchTheme: SwitchThemeData(trackColor: MaterialStateProperty.resolveWith((states) => states.contains(MaterialState.selected) ? seed.withOpacity(.45) : Colors.black26), thumbColor: MaterialStateProperty.resolveWith((states) => states.contains(MaterialState.selected) ? seed : Colors.white)),
-      sliderTheme: SliderThemeData(activeTrackColor: seed, thumbColor: seed, overlayColor: seed.withOpacity(.12)),
+      switchTheme: SwitchThemeData(trackColor: MaterialStateProperty.resolveWith((states) => states.contains(MaterialState.selected) ? seed.withValues(alpha: .45) : Colors.black26), thumbColor: MaterialStateProperty.resolveWith((states) => states.contains(MaterialState.selected) ? seed : Colors.white)),
+      sliderTheme: SliderThemeData(activeTrackColor: seed, thumbColor: seed, overlayColor: seed.withValues(alpha: .12)),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: seed),
     );
   }
