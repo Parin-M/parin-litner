@@ -28,11 +28,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          # No Gradle cache here: Android project is generated immediately above.
+          cache: gradle
 
       - name: Set Android label
-        run: |
-          sed -i 's/android:label="parin_litner"/android:label="Parin Litner"/' android/app/src/main/AndroidManifest.xml || true
+        run: sed -i 's/android:label="parin_litner"/android:label="Parin Litner"/' android/app/src/main/AndroidManifest.xml || true
 
       - name: Install dependencies
         run: flutter pub get
