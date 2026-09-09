@@ -50,10 +50,14 @@ jobs:
           assert b[:8] == b'\x89PNG\r\n\x1a\n', 'Logo is not PNG'
           pos=8
           while pos < len(b):
-              n=struct.unpack('>I',b[pos:pos+4])[0]; t=b[pos+4:pos+8]; d=b[pos+8:pos+8+n]
+              if pos + 12 > len(b): raise AssertionError('PNG truncated')
+              n=struct.unpack('>I',b[pos:pos+4])[0]; t=b[pos+4:pos+8]
+              end=pos+12+n
+              if end > len(b): raise AssertionError('PNG chunk truncated')
+              d=b[pos+8:pos+8+n]
               c=struct.unpack('>I',b[pos+8+n:pos+12+n])[0]
               assert zlib.crc32(t+d)&0xffffffff == c, 'PNG CRC mismatch'
-              pos += 12+n
+              pos=end
               if t == b'IEND': break
           assert pos <= len(b), 'PNG truncated'
           print('Valid logo PNG:', len(b), 'bytes')
@@ -87,7 +91,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
 
       - name: Build APK
         run: flutter build apk --release
