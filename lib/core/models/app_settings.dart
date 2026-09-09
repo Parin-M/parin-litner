@@ -14,8 +14,8 @@ class AppSettings extends ChangeNotifier {
     AppLanguage('en', 'English'),
     AppLanguage('da', 'Dansk'),
     AppLanguage('de', 'Deutsch'),
-    AppLanguage('de-CH', 'Schweizerdeutsch'),
-    AppLanguage('de-AT', 'Österreichisches Deutsch'),
+    AppLanguage('de-CH', 'Schweiz — Deutsch'),
+    AppLanguage('de-AT', 'Österreich — Deutsch'),
     AppLanguage('nl', 'Nederlands'),
     AppLanguage('es', 'Español'),
     AppLanguage('pt', 'Português'),
@@ -37,12 +37,15 @@ class AppSettings extends ChangeNotifier {
   bool glass = true;
   double glassOpacity = .62;
   int dailyGoal = 20;
-
   bool musicEnabled = false;
   String musicTrack = 'lofi_night';
   double musicVolume = .35;
 
   AppLanguage get language => languages.firstWhere((x) => x.code == languageCode, orElse: () => languages.first);
+  Locale get locale {
+    final parts = languageCode.split('-');
+    return Locale.fromSubtags(languageCode: parts.first, countryCode: parts.length > 1 ? parts[1] : null);
+  }
 
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
@@ -93,31 +96,8 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setGlassOpacity(double value) async {
-    glassOpacity = value;
-    final p = await SharedPreferences.getInstance();
-    await p.setDouble('glass_opacity', value);
-    notifyListeners();
-  }
-
-  Future<void> setDailyGoal(int value) async {
-    dailyGoal = value;
-    final p = await SharedPreferences.getInstance();
-    await p.setInt('daily_goal', value);
-    notifyListeners();
-  }
-
-  Future<void> setMusicTrack(String value) async {
-    musicTrack = value;
-    final p = await SharedPreferences.getInstance();
-    await p.setString('music_track', value);
-    notifyListeners();
-  }
-
-  Future<void> setMusicVolume(double value) async {
-    musicVolume = value.clamp(0.0, 1.0).toDouble();
-    final p = await SharedPreferences.getInstance();
-    await p.setDouble('music_volume', musicVolume);
-    notifyListeners();
-  }
+  Future<void> setGlassOpacity(double value) async { glassOpacity = value.clamp(.30, .85).toDouble(); final p = await SharedPreferences.getInstance(); await p.setDouble('glass_opacity', glassOpacity); notifyListeners(); }
+  Future<void> setDailyGoal(int value) async { dailyGoal = value.clamp(5, 100).toInt(); final p = await SharedPreferences.getInstance(); await p.setInt('daily_goal', dailyGoal); notifyListeners(); }
+  Future<void> setMusicTrack(String value) async { musicTrack = value; final p = await SharedPreferences.getInstance(); await p.setString('music_track', value); notifyListeners(); }
+  Future<void> setMusicVolume(double value) async { musicVolume = value.clamp(0.0, 1.0).toDouble(); final p = await SharedPreferences.getInstance(); await p.setDouble('music_volume', musicVolume); notifyListeners(); }
 }
