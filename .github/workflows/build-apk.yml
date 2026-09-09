@@ -102,7 +102,7 @@ jobs:
           test -s "$APK"
           unzip -t "$APK" >/dev/null
           unzip -l "$APK" | grep -q 'classes.dex'
-          unzip -l "$APK" | grep -Eq 'ic_launcher(_round)?\.png'
+          unzip -l "$APK" | grep -Eq 'mipmap[^/]*/ic_launcher(_round)?\.(png|webp|xml)$'
           echo "APK verification passed: $(du -h "$APK" | cut -f1)"
 
       - name: Upload APK
