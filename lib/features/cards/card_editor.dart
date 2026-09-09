@@ -21,7 +21,6 @@ class _CardEditorState extends State<CardEditor> {
   String? frontImage;
   String? backImage;
   bool saving = false;
-
   String s(String key) => AppStrings.t(context, key);
 
   @override
@@ -44,7 +43,7 @@ class _CardEditorState extends State<CardEditor> {
 
   Future<void> _pickImage(bool isFront) async {
     try {
-      final file = await FilePicker.pickFile(type: FileType.image, withData: true);
+      final file = await FilePicker.pickFile(type: FileType.image);
       if (file == null) return;
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty || !mounted) return;
@@ -60,11 +59,11 @@ class _CardEditorState extends State<CardEditor> {
   Future<void> save() async {
     if (saving) return;
     if (front.text.trim().isEmpty && _bytes(frontImage) == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s('front_required'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s('card_front')}: ${s('save')}')));
       return;
     }
     if (back.text.trim().isEmpty && _bytes(backImage) == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s('back_required'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s('card_back')}: ${s('save')}')));
       return;
     }
     setState(() => saving = true);
@@ -81,25 +80,18 @@ class _CardEditorState extends State<CardEditor> {
 
   Future<void> remove() async {
     if (widget.card == null) return;
-    final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-      title: Text(s('delete_card')),
-      content: Text(s('delete_card_confirm')),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: Text(s('cancel'))), ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(s('delete')))],
-    ));
+    final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: Text(s('delete_card')), content: Text(s('delete_card_confirm')), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: Text(s('cancel'))), ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(s('delete')))]));
     if (ok == true) { widget.deck.cards.remove(widget.card); if (mounted) Navigator.pop(context, true); }
   }
 
-  Widget _brokenImage() => Container(height: 120, width: double.infinity, alignment: Alignment.center, color: Theme.of(context).dividerColor.withOpacity(.12), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.broken_image_outlined), const SizedBox(width: 8), Text(s('image_unavailable'))]));
+  Widget _brokenImage() => Container(height: 120, width: double.infinity, alignment: Alignment.center, color: Theme.of(context).dividerColor.withValues(alpha: .12), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.broken_image_outlined), const SizedBox(width: 8), Text(s('image_unavailable'))]));
 
   Widget _imageEditor({required bool isFront, required String titleKey}) {
     final data = isFront ? frontImage : backImage;
     final bytes = _bytes(data);
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [Expanded(child: Text(s(titleKey), style: const TextStyle(fontWeight: FontWeight.w700))), if (data != null) IconButton(onPressed: () => _removeImage(isFront), icon: const Icon(Icons.delete_outline), tooltip: s('delete')), OutlinedButton.icon(onPressed: () => _pickImage(isFront), icon: const Icon(Icons.add_photo_alternate_outlined), label: Text(data == null ? s('add_image') : s('change_image')))]),
-      if (data != null) ...[
-        const SizedBox(height: 8),
-        SafeMemoryImage(base64: bytes == null ? null : data, height: 150, width: double.infinity, fit: BoxFit.contain, borderRadius: BorderRadius.circular(3), error: _brokenImage()),
-      ],
+      if (data != null) ...[const SizedBox(height: 8), SafeMemoryImage(base64: bytes == null ? null : data, height: 150, width: double.infinity, fit: BoxFit.contain, borderRadius: BorderRadius.circular(3), error: _brokenImage())],
     ]);
   }
 
