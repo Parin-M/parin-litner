@@ -25,6 +25,7 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
   final settings = AppSettings();
   List<Deck> decks = [];
   bool loading = true;
+  String? startupError;
 
   @override
   void initState() {
@@ -33,25 +34,52 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
   }
 
   Future<void> _load() async {
-    await settings.load();
-    final data = await storage.load();
-    if (data.isEmpty) {
-      data.add(Deck(id: 'demo', name: 'شروع سریع', description: 'کارت‌های نمونه'));
-      data.first.cards.addAll([
-        FlashCard(id: '1', front: 'Leitner چیست؟', back: 'یک روش مرور فاصله‌دار برای انتقال کارت‌ها بین خانه‌ها.'),
-        FlashCard(id: '2', front: 'Flutter چیست؟', back: 'فریم‌ورک ساخت رابط کاربری چندسکویی با Dart.'),
-      ]);
-    }
-    if (mounted) {
+    try {
+      // Settings are optional at startup. A storage/plugin failure must never
+      // prevent the application shell from being displayed.
+      try {
+        await settings.load();
+      } catch (_) {}
+
+      List<Deck> data;
+      try {
+        data = await storage.load();
+      } catch (_) {
+        data = [];
+      }
+
+      if (data.isEmpty) {
+        data = [Deck(id: 'demo', name: 'شروع سریع', description: 'کارت‌های نمونه')];
+        data.first.cards.addAll([
+          FlashCard(id: '1', front: 'Leitner چیست؟', back: 'یک روش مرور فاصله‌دار برای انتقال کارت‌ها بین خانه‌ها.'),
+          FlashCard(id: '2', front: 'Flutter چیست؟', back: 'فریم‌ورک ساخت رابط کاربری چندسکویی با Dart.'),
+        ]);
+      }
+
+      if (!mounted) return;
       setState(() {
         decks = data;
+        loading = false;
+      });
+    } catch (e) {
+      // Last-resort fallback: always render a usable app instead of leaving
+      // the launcher activity on a blank/crashed screen.
+      if (!mounted) return;
+      setState(() {
+        decks = [Deck(id: 'demo', name: 'شروع سریع', description: 'کارت‌های نمونه')];
+        decks.first.cards.addAll([
+          FlashCard(id: '1', front: 'خوش آمدید', back: 'برنامه Parin Litner آماده است.'),
+        ]);
+        startupError = e.toString();
         loading = false;
       });
     }
   }
 
   Future<void> _save() async {
-    await storage.save(decks);
+    try {
+      await storage.save(decks);
+    } catch (_) {}
     if (mounted) setState(() {});
   }
 
