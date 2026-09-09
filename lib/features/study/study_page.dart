@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/models/app_models.dart';
-import '../../core/utils/helpers.dart';
 
 class StudyPage extends StatefulWidget {
   final Deck deck;
@@ -21,11 +20,8 @@ class _StudyPageState extends State<StudyPage>
     with SingleTickerProviderStateMixin {
   late List<FlashCard> queue;
   int index = 0;
-  bool back = false;
-  late final AnimationController flip = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 450),
-  );
+  bool revealed = false;
+  late final AnimationController flip;
 
   @override
   void initState() {
@@ -34,6 +30,10 @@ class _StudyPageState extends State<StudyPage>
         .where((card) => !card.dueAt.isAfter(DateTime.now()))
         .toList()
       ..shuffle();
+    flip = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
   }
 
   @override
@@ -43,26 +43,32 @@ class _StudyPageState extends State<StudyPage>
   }
 
   void reveal() {
-    setState(() => back = !back);
-    if (back) {
+    setState(() => revealed = !revealed);
+    if (revealed) {
       flip.forward();
     } else {
       flip.reverse();
     }
   }
 
-  void rate(int move) {
+  void rate(int movement) {
+    if (queue.isEmpty || index >= queue.length) return;
+
     final card = queue[index];
     card.reviews++;
 
-    if (move == 0) {
+    if (movement == 0) {
       card.lapses++;
       card.boxIndex = 0;
       card.dueAt = DateTime.now().add(const Duration(minutes: 10));
     } else {
-      card.boxIndex = min(widget.deck.boxes.length - 1, card.boxIndex + move);
-      final days = [1, 2, 4, 7, 14, 30][min(card.boxIndex, 5)];
-      card.dueAt = DateTime.now().add(Duration(days: days));
+      final lastBox = widget.deck.boxes.length - 1;
+      card.boxIndex = min(lastBox, card.boxIndex + movement);
+      const intervals = [1, 2, 4, 7, 14, 30];
+      final intervalIndex = min(card.boxIndex, intervals.length - 1);
+      card.dueAt = DateTime.now().add(
+        Duration(days: intervals[intervalIndex]),
+      );
     }
 
     widget.onChanged();
@@ -70,7 +76,7 @@ class _StudyPageState extends State<StudyPage>
     if (index + 1 < queue.length) {
       setState(() {
         index++;
-        back = false;
+        revealed = false;
       });
       flip.reset();
     } else {
@@ -83,15 +89,17 @@ class _StudyPageState extends State<StudyPage>
     if (queue.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('مرور')),
-        body: const Center(child: Text('کارت آماده مرور نداری 🎉')),
+        body: const Center(
+          child: Text('کارت آماده مرور نداری 🎉'),
+        ),
       );
     }
 
     final card = queue[index];
-    final text = back ? card.back : card.front;
-
     return Scaffold(
-      appBar: AppBar(title: Text('${index + 1} / ${queue.length}')),
+      appBar: AppBar(
+        title: Text('${index + 1} / ${queue.length}'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -106,60 +114,20 @@ class _StudyPageState extends State<StudyPage>
                     return Transform(
                       alignment: Alignment.center,
                       transform: Matrix4.identity()
-                        ..setEntry(3, 2, 0.0014)
+                        ..setEntry(3, 2, .0014)
                         ..rotateY(angle),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(28),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(32),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF161E35), Color(0xFF0E1425)],
-                          ),
-                          border: Border.all(color: Colors.white12),
-                        ),
-                        child: Center(
-                          child: Transform(
-                            alignment: Alignment.center,
-                            transform: Matrix4.identity()
-                              ..rotateY(back ? pi : 0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  back
-                                      ? Icons.lightbulb_rounded
-                                      : Icons.help_outline_rounded,
-                                  size: 44,
-                                  color: const Color(0xFF6D63FF),
-                                ),
-                                const SizedBox(height: 22),
-                                Text(
-                                  text,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 27,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Text(
-                                  back ? 'پاسخ' : 'برای دیدن پاسخ ضربه بزن',
-                                  style: const TextStyle(color: Colors.white54),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      child: child,
                     );
                   },
+                  child: _FlashCardView(
+                    text: revealed ? card.back : card.front,
+                    revealed: revealed,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            if (back)
+            if (revealed)
               Row(
                 children: [
                   Expanded(
@@ -199,6 +167,63 @@ class _StudyPageState extends State<StudyPage>
                   ),
                 ],
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FlashCardView extends StatelessWidget {
+  final String text;
+  final bool revealed;
+
+  const _FlashCardView({required this.text, required this.revealed});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .72),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: scheme.primary.withValues(alpha: .12)),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.primary.withValues(alpha: .10),
+            blurRadius: 28,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              revealed ? Icons.lightbulb_rounded : Icons.help_outline_rounded,
+              size: 44,
+              color: scheme.primary,
+            ),
+            const SizedBox(height: 22),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.w900,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              revealed ? 'پاسخ' : 'برای دیدن پاسخ ضربه بزن',
+              style: TextStyle(
+                color: scheme.onSurface.withValues(alpha: .52),
+              ),
+            ),
           ],
         ),
       ),
