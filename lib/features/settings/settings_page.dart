@@ -16,6 +16,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final music = MusicService.instance;
   bool previewPlaying = false;
+  String s(String key) => AppStrings.t(context, key);
 
   @override
   void dispose() { if (previewPlaying) music.stop(); super.dispose(); }
@@ -24,8 +25,6 @@ class _SettingsPageState extends State<SettingsPage> {
     if (previewPlaying) { await music.pause(); } else { await music.play(widget.settings.musicTrack, volume: widget.settings.musicVolume); }
     if (mounted) setState(() => previewPlaying = !previewPlaying);
   }
-
-  String s(String key) => AppStrings.t(context, key);
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -36,32 +35,25 @@ class _SettingsPageState extends State<SettingsPage> {
         _SectionTitle(s('language')),
         AnimatedGlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(s('ui_language'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 6),
-          Text(s('choose_language')),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6), Text(s('choose_language')), const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: widget.settings.languageCode,
+            initialValue: widget.settings.languageCode,
             isExpanded: true,
             decoration: InputDecoration(prefixIcon: const Icon(Icons.language_rounded), labelText: s('language')),
             items: [for (final language in AppSettings.languages) DropdownMenuItem(value: language.code, child: Text(language.name))],
-            onChanged: (value) async {
-              if (value == null) return;
-              await widget.settings.setLanguage(value);
-              if (mounted) setState(() {});
-            },
+            onChanged: (value) async { if (value != null) await widget.settings.setLanguage(value); },
           ),
         ])),
         const SizedBox(height: 18),
         _SectionTitle(s('appearance')),
         AnimatedGlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(s('theme'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
+          Text(s('theme'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 12),
           SizedBox(height: 82, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: AppTheme.themes.length, separatorBuilder: (_, __) => const SizedBox(width: 10), itemBuilder: (context, i) {
             final t = AppTheme.themes[i]; final selected = i == widget.settings.themeIndex;
             return GestureDetector(onTap: () => widget.settings.setTheme(i), child: AnimatedContainer(duration: const Duration(milliseconds: 280), width: 102, padding: const EdgeInsets.all(9), decoration: BoxDecoration(gradient: LinearGradient(colors: [t.primary, t.secondary]), borderRadius: BorderRadius.circular(20), border: Border.all(color: selected ? Colors.white : Colors.white54, width: selected ? 3 : 1)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(selected ? Icons.check_circle_rounded : Icons.palette_outlined, color: Colors.white), const SizedBox(height: 4), Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11))])));
           })),
           SwitchListTile.adaptive(contentPadding: EdgeInsets.zero, title: Text(s('glass'), style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(s('glass_sub')), value: widget.settings.glass, onChanged: (v) => widget.settings.setBool('glass', v)),
-          if (widget.settings.glass) ...[Text('Glass opacity: ${(widget.settings.glassOpacity * 100).round()}%'), Slider(value: widget.settings.glassOpacity, min: .30, max: .85, divisions: 11, onChanged: widget.settings.setGlassOpacity)],
+          if (widget.settings.glass) ...[Text('${s('glass')}: ${(widget.settings.glassOpacity * 100).round()}%'), Slider(value: widget.settings.glassOpacity, min: .30, max: .85, divisions: 11, onChanged: widget.settings.setGlassOpacity)],
         ])),
         const SizedBox(height: 18),
         _SectionTitle(s('music')),
@@ -69,7 +61,7 @@ class _SettingsPageState extends State<SettingsPage> {
           SwitchListTile.adaptive(contentPadding: EdgeInsets.zero, secondary: Icon(Icons.music_note_rounded, color: Theme.of(context).colorScheme.primary), title: Text(s('music_study'), style: const TextStyle(fontWeight: FontWeight.w900)), value: widget.settings.musicEnabled, onChanged: (v) async { await widget.settings.setBool('music_enabled', v); if (!v) await music.stop(); }),
           if (widget.settings.musicEnabled) ...[
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(value: widget.settings.musicTrack, isExpanded: true, decoration: InputDecoration(prefixIcon: const Icon(Icons.library_music_rounded), labelText: s('music')), items: [for (final track in MusicService.tracks) DropdownMenuItem(value: track.id, child: Text(track.title))], onChanged: (v) async { if (v != null) { await widget.settings.setMusicTrack(v); if (previewPlaying) await music.play(v, volume: widget.settings.musicVolume); } }),
+            DropdownButtonFormField<String>(initialValue: widget.settings.musicTrack, isExpanded: true, decoration: InputDecoration(prefixIcon: const Icon(Icons.library_music_rounded), labelText: s('music')), items: [for (final track in MusicService.tracks) DropdownMenuItem(value: track.id, child: Text(track.title))], onChanged: (v) async { if (v != null) { await widget.settings.setMusicTrack(v); if (previewPlaying) await music.play(v, volume: widget.settings.musicVolume); } }),
             Row(children: [const Icon(Icons.volume_down_rounded), Expanded(child: Slider(value: widget.settings.musicVolume, min: .05, max: .8, divisions: 15, onChanged: (v) async { await widget.settings.setMusicVolume(v); if (previewPlaying) await music.setVolume(v); })), const Icon(Icons.volume_up_rounded)]),
             OutlinedButton.icon(onPressed: _togglePreview, icon: Icon(previewPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded), label: Text(previewPlaying ? s('cancel') : s('music_btn'))),
           ],
@@ -77,11 +69,11 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 18),
         _SectionTitle(s('experience')),
         AnimatedGlassCard(child: Column(children: [
-          _SwitchRow(Icons.auto_awesome_rounded, 'Animations', widget.settings.animations, (v) => widget.settings.setBool('animations', v)),
-          _SwitchRow(Icons.vibration_rounded, 'Haptics', widget.settings.haptics, (v) => widget.settings.setBool('haptics', v)),
-          _SwitchRow(Icons.flip_rounded, 'Auto reveal', widget.settings.autoReveal, (v) => widget.settings.setBool('auto_reveal', v)),
-          _SwitchRow(Icons.linear_scale_rounded, 'Progress', widget.settings.showProgress, (v) => widget.settings.setBool('show_progress', v)),
-          _SwitchRow(Icons.timer_outlined, 'Timer', widget.settings.showTimer, (v) => widget.settings.setBool('show_timer', v)),
+          _SwitchRow(Icons.auto_awesome_rounded, s('animations'), widget.settings.animations, (v) => widget.settings.setBool('animations', v)),
+          _SwitchRow(Icons.vibration_rounded, s('haptics'), widget.settings.haptics, (v) => widget.settings.setBool('haptics', v)),
+          _SwitchRow(Icons.flip_rounded, s('auto_reveal'), widget.settings.autoReveal, (v) => widget.settings.setBool('auto_reveal', v)),
+          _SwitchRow(Icons.linear_scale_rounded, s('progress'), widget.settings.showProgress, (v) => widget.settings.setBool('show_progress', v)),
+          _SwitchRow(Icons.timer_outlined, s('timer'), widget.settings.showTimer, (v) => widget.settings.setBool('show_timer', v)),
         ])),
         const SizedBox(height: 18),
         _SectionTitle(s('daily_goal')),
@@ -92,12 +84,12 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 18),
         _SectionTitle(s('extra')),
         AnimatedGlassCard(child: Column(children: [
-          _ActionRow(Icons.photo_library_rounded, 'Image cards'),
-          _ActionRow(Icons.layers_rounded, 'Unlimited Leitner boxes'),
-          _ActionRow(Icons.category_rounded, 'Deck management'),
-          _ActionRow(Icons.swipe_rounded, 'Swipe rating'),
-          _ActionRow(Icons.auto_graph_rounded, 'Adaptive review'),
-          _ActionRow(Icons.favorite_rounded, 'Favorite cards'),
+          _ActionRow(Icons.photo_library_rounded, s('add_image')),
+          _ActionRow(Icons.layers_rounded, s('boxes')),
+          _ActionRow(Icons.category_rounded, s('decks')),
+          _ActionRow(Icons.swipe_rounded, s('swipe')),
+          _ActionRow(Icons.auto_graph_rounded, s('experience')),
+          _ActionRow(Icons.favorite_rounded, s('favorites')),
         ])),
       ]),
     ),
