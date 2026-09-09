@@ -36,19 +36,33 @@ class _DeckPageState extends State<DeckPage> {
   }
 
   Future<void> _deleteDeck() async {
-    final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-      title: const Text('حذف دسته؟'), content: Text('دسته «${widget.deck.name}» و تمام ${widget.deck.cards.length} کارت آن حذف می‌شود.'),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('لغو')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف'))],
-    ));
-    if (ok == true && mounted) {
-      Navigator.pop(context, 'deleted');
-      widget.onChanged();
-    }
+    final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: const Text('حذف دسته؟'), content: Text('دسته «${widget.deck.name}» و تمام ${widget.deck.cards.length} کارت آن حذف می‌شود.'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('لغو')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف'))]));
+    if (ok == true && mounted) { Navigator.pop(context, 'deleted'); widget.onChanged(); }
   }
 
   Future<void> _editDeck() async { final controller = TextEditingController(text: widget.deck.name); final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: const Text('ویرایش دسته'), content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'نام')), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('لغو')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('ذخیره'))])); final name = controller.text.trim(); controller.dispose(); if (ok == true && name.isNotEmpty) { widget.deck.name = name; setState(() {}); widget.onChanged(); } }
   Future<void> _editCard([FlashCard? card]) async { final changed = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => CardEditor(deck: widget.deck, card: card))); if (changed == true) { setState(() {}); widget.onChanged(); } }
-  void _study() { Navigator.push(context, MaterialPageRoute(builder: (_) => StudyPage(deck: widget.deck, settings: widget.settings, onChanged: () { setState(() {}); widget.onChanged(); }))); }
+
+  Future<void> _study() async {
+    final mode = await showModalBottomSheet<String>(context: context, showDragHandle: true, builder: (_) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 12), child: Align(alignment: Alignment.centerRight, child: Text('نوع مرور را انتخاب کن', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)))),
+      ListTile(leading: const Icon(Icons.bolt_rounded), title: const Text('کارت‌های آماده امروز'), subtitle: Text('${deck.cards.where((c) => !c.dueAt.isAfter(DateTime.now())).length} کارت'), onTap: () => Navigator.pop(context, 'due')),
+      ListTile(leading: const Icon(Icons.all_inclusive_rounded), title: const Text('همه کارت‌ها'), subtitle: Text('${deck.cards.length} کارت'), onTap: () => Navigator.pop(context, 'all')),
+      ListTile(leading: const Icon(Icons.star_rounded), title: const Text('فقط کارت‌های محبوب'), subtitle: Text('${deck.cards.where((c) => c.favorite).length} کارت'), onTap: () => Navigator.pop(context, 'favorites')),
+    ])));
+    if (!mounted || mode == null) return;
+    final now = DateTime.now();
+    List<FlashCard> selected;
+    switch (mode) {
+      case 'all': selected = [...deck.cards]; break;
+      case 'favorites': selected = deck.cards.where((c) => c.favorite).toList(); break;
+      default: selected = deck.cards.where((c) => !c.dueAt.isAfter(now)).toList();
+    }
+    if (selected.isEmpty) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('در این حالت کارتی برای مرور وجود ندارد.'))); return; }
+    if (!mounted) return;
+    Navigator.push(context, MaterialPageRoute(builder: (_) => StudyPage(deck: widget.deck, settings: widget.settings, studyCards: selected, onChanged: () { setState(() {}); widget.onChanged(); })));
+  }
+
   Future<void> _boxes() async { await showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => BoxManager(deck: widget.deck, onChanged: () { setState(() {}); widget.onChanged(); })); }
 }
 
