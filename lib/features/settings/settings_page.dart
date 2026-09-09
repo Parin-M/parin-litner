@@ -21,8 +21,43 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void dispose() { if (previewPlaying) music.stop(); super.dispose(); }
 
+  Future<void> _chooseLanguage() async {
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(s('choose_language')),
+        contentPadding: const EdgeInsets.only(top: 10, bottom: 8),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 430,
+          child: ListView.separated(
+            itemCount: AppSettings.languages.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (_, index) {
+              final language = AppSettings.languages[index];
+              return RadioListTile<String>(
+                value: language.code,
+                groupValue: widget.settings.languageCode,
+                title: Text(language.name),
+                onChanged: (value) => Navigator.pop(dialogContext, value),
+              );
+            },
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(s('cancel')))],
+      ),
+    );
+    if (selected == null) return;
+    await widget.settings.setLanguage(selected);
+    if (mounted) setState(() {});
+  }
+
   Future<void> _togglePreview() async {
-    if (previewPlaying) { await music.pause(); } else { await music.play(widget.settings.musicTrack, volume: widget.settings.musicVolume); }
+    if (previewPlaying) {
+      await music.pause();
+    } else {
+      await music.play(widget.settings.musicTrack, volume: widget.settings.musicVolume);
+    }
     if (mounted) setState(() => previewPlaying = !previewPlaying);
   }
 
@@ -30,73 +65,88 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.settings,
     builder: (context, _) => Scaffold(
-      appBar: AppBar(title: Text(s('settings'), style: const TextStyle(fontWeight: FontWeight.w900))),
-      body: ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 36), children: [
-        _SectionTitle(s('language')),
-        AnimatedGlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(s('ui_language'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 6), Text(s('choose_language')), const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            key: ValueKey('language-${widget.settings.languageCode}'),
-            initialValue: widget.settings.languageCode,
-            isExpanded: true,
-            decoration: InputDecoration(prefixIcon: const Icon(Icons.language_rounded), labelText: s('language')),
-            items: [for (final language in AppSettings.languages) DropdownMenuItem(value: language.code, child: Text(language.name))],
-            onChanged: (value) async { if (value != null) await widget.settings.setLanguage(value); },
-          ),
-        ])),
-        const SizedBox(height: 18),
-        _SectionTitle(s('appearance')),
-        AnimatedGlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(s('theme'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 12),
-          SizedBox(height: 82, child: ListView.separated(scrollDirection: Axis.horizontal, itemCount: AppTheme.themes.length, separatorBuilder: (_, __) => const SizedBox(width: 10), itemBuilder: (context, i) {
-            final t = AppTheme.themes[i]; final selected = i == widget.settings.themeIndex;
-            return GestureDetector(onTap: () => widget.settings.setTheme(i), child: AnimatedContainer(duration: const Duration(milliseconds: 280), width: 102, padding: const EdgeInsets.all(9), decoration: BoxDecoration(gradient: LinearGradient(colors: [t.primary, t.secondary]), borderRadius: BorderRadius.circular(20), border: Border.all(color: selected ? Colors.white : Colors.white54, width: selected ? 3 : 1)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(selected ? Icons.check_circle_rounded : Icons.palette_outlined, color: Colors.white), const SizedBox(height: 4), Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11))])));
-          })),
-          SwitchListTile.adaptive(contentPadding: EdgeInsets.zero, title: Text(s('glass'), style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(s('glass_sub')), value: widget.settings.glass, onChanged: (v) => widget.settings.setBool('glass', v)),
-          if (widget.settings.glass) ...[Text('${s('glass')}: ${(widget.settings.glassOpacity * 100).round()}%'), Slider(value: widget.settings.glassOpacity, min: .30, max: .85, divisions: 11, onChanged: widget.settings.setGlassOpacity)],
-        ])),
-        const SizedBox(height: 18),
-        _SectionTitle(s('music')),
-        AnimatedGlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SwitchListTile.adaptive(contentPadding: EdgeInsets.zero, secondary: Icon(Icons.music_note_rounded, color: Theme.of(context).colorScheme.primary), title: Text(s('music_study'), style: const TextStyle(fontWeight: FontWeight.w900)), value: widget.settings.musicEnabled, onChanged: (v) async { await widget.settings.setBool('music_enabled', v); if (!v) await music.stop(); }),
-          if (widget.settings.musicEnabled) ...[
-            const SizedBox(height: 6),
-            DropdownButtonFormField<String>(initialValue: widget.settings.musicTrack, isExpanded: true, decoration: InputDecoration(prefixIcon: const Icon(Icons.library_music_rounded), labelText: s('music')), items: [for (final track in MusicService.tracks) DropdownMenuItem(value: track.id, child: Text(track.title))], onChanged: (v) async { if (v != null) { await widget.settings.setMusicTrack(v); if (previewPlaying) await music.play(v, volume: widget.settings.musicVolume); } }),
-            Row(children: [const Icon(Icons.volume_down_rounded), Expanded(child: Slider(value: widget.settings.musicVolume, min: .05, max: .8, divisions: 15, onChanged: (v) async { await widget.settings.setMusicVolume(v); if (previewPlaying) await music.setVolume(v); })), const Icon(Icons.volume_up_rounded)]),
-            OutlinedButton.icon(onPressed: _togglePreview, icon: Icon(previewPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded), label: Text(previewPlaying ? s('cancel') : s('music_btn'))),
-          ],
-        ])),
-        const SizedBox(height: 18),
-        _SectionTitle(s('experience')),
-        AnimatedGlassCard(child: Column(children: [
-          _SwitchRow(Icons.auto_awesome_rounded, s('animations'), widget.settings.animations, (v) => widget.settings.setBool('animations', v)),
-          _SwitchRow(Icons.vibration_rounded, s('haptics'), widget.settings.haptics, (v) => widget.settings.setBool('haptics', v)),
-          _SwitchRow(Icons.flip_rounded, s('auto_reveal'), widget.settings.autoReveal, (v) => widget.settings.setBool('auto_reveal', v)),
-          _SwitchRow(Icons.linear_scale_rounded, s('progress'), widget.settings.showProgress, (v) => widget.settings.setBool('show_progress', v)),
-          _SwitchRow(Icons.timer_outlined, s('timer'), widget.settings.showTimer, (v) => widget.settings.setBool('show_timer', v)),
-        ])),
-        const SizedBox(height: 18),
-        _SectionTitle(s('daily_goal')),
-        AnimatedGlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [const Icon(Icons.flag_rounded), const SizedBox(width: 10), Text(s('daily_goal'), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)), const Spacer(), Text('${widget.settings.dailyGoal}')]), Slider(value: widget.settings.dailyGoal.toDouble(), min: 5, max: 100, divisions: 19, onChanged: (v) => widget.settings.setDailyGoal(v.round()))])),
-        const SizedBox(height: 18),
-        _SectionTitle(s('backup')),
-        AnimatedGlassCard(child: Row(children: [Expanded(child: FilledButton.icon(onPressed: widget.onExport, icon: const Icon(Icons.file_upload_outlined), label: Text(s('export')))), const SizedBox(width: 10), Expanded(child: OutlinedButton.icon(onPressed: widget.onImport, icon: const Icon(Icons.file_download_outlined), label: Text(s('import'))))])),
-        const SizedBox(height: 18),
-        _SectionTitle(s('extra')),
-        AnimatedGlassCard(child: Column(children: [
-          _ActionRow(Icons.photo_library_rounded, s('add_image')),
-          _ActionRow(Icons.layers_rounded, s('boxes')),
-          _ActionRow(Icons.category_rounded, s('decks')),
-          _ActionRow(Icons.swipe_rounded, s('swipe')),
-          _ActionRow(Icons.auto_graph_rounded, s('experience')),
-          _ActionRow(Icons.favorite_rounded, s('favorites')),
-        ])),
-      ]),
+      appBar: AppBar(title: Text(s('settings'))),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        children: [
+          _section(s('language'), Icons.language_outlined, [
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              leading: const Icon(Icons.translate_outlined),
+              title: Text(s('ui_language')),
+              subtitle: Text(AppStrings.names[widget.settings.languageCode] ?? widget.settings.languageCode),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _chooseLanguage,
+            ),
+          ]),
+          _section(s('appearance'), Icons.palette_outlined, [
+            Padding(padding: const EdgeInsets.fromLTRB(8, 4, 8, 8), child: Text(s('theme'), style: const TextStyle(fontWeight: FontWeight.w600))),
+            SizedBox(
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: AppTheme.themes.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final theme = AppTheme.themes[i];
+                  final selected = i == widget.settings.themeIndex;
+                  return InkWell(
+                    onTap: () => widget.settings.setTheme(i),
+                    child: Container(
+                      width: 118,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(color: theme.primary, borderRadius: BorderRadius.circular(3), border: Border.all(color: selected ? Colors.black87 : Colors.transparent, width: 2)),
+                      child: Center(child: Text(theme.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 8), title: Text(s('glass')), subtitle: Text(s('glass_sub')), value: widget.settings.glass, onChanged: (v) => widget.settings.setBool('glass', v)),
+            if (widget.settings.glass) Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Row(children: [Expanded(child: Slider(value: widget.settings.glassOpacity, min: .30, max: .85, divisions: 11, onChanged: widget.settings.setGlassOpacity)), Text('${(widget.settings.glassOpacity * 100).round()}%')])),
+          ]),
+          _section(s('music'), Icons.music_note_outlined, [
+            SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 8), title: Text(s('music_study')), value: widget.settings.musicEnabled, onChanged: (v) async { await widget.settings.setBool('music_enabled', v); if (!v) { await music.stop(); if (mounted) setState(() => previewPlaying = false); } }),
+            if (widget.settings.musicEnabled) ...[
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: DropdownButtonFormField<String>(value: widget.settings.musicTrack, isExpanded: true, decoration: InputDecoration(labelText: s('music')), items: [for (final track in MusicService.tracks) DropdownMenuItem(value: track.id, child: Text(track.title))], onChanged: (v) async { if (v != null) { await widget.settings.setMusicTrack(v); if (previewPlaying) await music.play(v, volume: widget.settings.musicVolume); } })),
+              Row(children: [const Icon(Icons.volume_down_outlined), Expanded(child: Slider(value: widget.settings.musicVolume, min: .05, max: .8, divisions: 15, onChanged: (v) async { await widget.settings.setMusicVolume(v); if (previewPlaying) await music.setVolume(v); })), const Icon(Icons.volume_up_outlined)]),
+              Align(alignment: AlignmentDirectional.centerStart, child: OutlinedButton.icon(onPressed: _togglePreview, icon: Icon(previewPlaying ? Icons.pause : Icons.play_arrow), label: Text(s('music_btn')))),
+            ],
+          ]),
+          _section(s('experience'), Icons.tune_outlined, [
+            _toggle('animations', Icons.animation_outlined),
+            _toggle('haptics', Icons.vibration_outlined),
+            _toggle('auto_reveal', Icons.flip_to_front_outlined),
+            _toggle('progress', Icons.linear_scale_outlined),
+            _toggle('timer', Icons.timer_outlined),
+            ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 8), leading: const Icon(Icons.flag_outlined), title: Text(s('daily_goal')), trailing: Text('${widget.settings.dailyGoal}'), subtitle: Slider(value: widget.settings.dailyGoal.toDouble(), min: 5, max: 100, divisions: 19, onChanged: (v) => widget.settings.setDailyGoal(v.round()))),
+          ]),
+          _section(s('backup'), Icons.backup_outlined, [
+            ButtonBar(alignment: MainAxisAlignment.start, children: [OutlinedButton.icon(onPressed: widget.onExport, icon: const Icon(Icons.upload_file_outlined), label: Text(s('export'))), OutlinedButton.icon(onPressed: widget.onImport, icon: const Icon(Icons.download_outlined), label: Text(s('import')))]),
+          ]),
+        ],
+      ),
     ),
   );
-}
 
-class _SectionTitle extends StatelessWidget { final String text; const _SectionTitle(this.text); @override Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(text, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary))); }
-class _SwitchRow extends StatelessWidget { final IconData icon; final String title; final bool value; final ValueChanged<bool> onChanged; const _SwitchRow(this.icon, this.title, this.value, this.onChanged); @override Widget build(BuildContext context) => SwitchListTile.adaptive(contentPadding: EdgeInsets.zero, secondary: Icon(icon, color: Theme.of(context).colorScheme.primary), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)), value: value, onChanged: onChanged); }
-class _ActionRow extends StatelessWidget { final IconData icon; final String title; const _ActionRow(this.icon, this.title); @override Widget build(BuildContext context) => ListTile(contentPadding: EdgeInsets.zero, leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .10), child: Icon(icon, color: Theme.of(context).colorScheme.primary)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800))); }
+  Widget _section(String title, IconData icon, List<Widget> children) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: AnimatedGlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [Icon(icon, size: 21, color: Theme.of(context).colorScheme.primary), const SizedBox(width: 8), Expanded(child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)))]),
+      const Divider(height: 18),
+      ...children,
+    ])),
+  );
+
+  Widget _toggle(String key, IconData icon) {
+    final value = switch (key) {
+      'animations' => widget.settings.animations,
+      'haptics' => widget.settings.haptics,
+      'auto_reveal' => widget.settings.autoReveal,
+      'progress' => widget.settings.showProgress,
+      'timer' => widget.settings.showTimer,
+      _ => false,
+    };
+    return SwitchListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 8), secondary: Icon(icon), title: Text(s(key)), value: value, onChanged: (v) => widget.settings.setBool(key, v));
+  }
+}
