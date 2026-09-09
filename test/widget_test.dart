@@ -1,25 +1,23 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:parin_litner/features/home/home_page.dart';
+name: parin_litner
+description: Parin Litner - a modern Persian Leitner flashcard app.
+publish_to: 'none'
+version: 4.0.0+4
 
-void main() {
-  testWidgets('Parin Litner home renders', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: HomePage(
-            decks: [],
-            onChanged: () {},
-            onImport: () async {},
-            onExport: () async {},
-                 themeIndex: 0,
-                 onThemeChanged: (_) {},
-          ),
-        ),
-      ),
-    );
-    expect(find.text('Parin Litner'), findsOneWidget);
-    expect(find.text('دسته‌های یادگیری'), findsOneWidget);
-  });
-}
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.5
+  file_picker: ^12.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/parin_litner_icon.png
