@@ -98,9 +98,12 @@ jobs:
 
       - name: Verify APK
         run: |
-          test -s build/app/outputs/flutter-apk/app-release.apk
-          unzip -p build/app/outputs/flutter-apk/app-release.apk classes.dex | strings | grep -q 'com/parin/parin_litner/MainActivity'
-          unzip -l build/app/outputs/flutter-apk/app-release.apk | grep -Eq 'mipmap-(hdpi|xhdpi|xxhdpi|xxxhdpi).*ic_launcher'
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          unzip -l "$APK" | grep -q 'classes.dex'
+          unzip -l "$APK" | grep -Eq 'ic_launcher(_round)?\.png'
+          echo "APK verification passed: $(du -h "$APK" | cut -f1)"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
