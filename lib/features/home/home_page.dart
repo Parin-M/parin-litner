@@ -10,7 +10,9 @@ class HomePage extends StatelessWidget {
   final VoidCallback onChanged;
   final Future<void> Function() onImport;
   final Future<void> Function() onExport;
-  const HomePage({super.key, required this.decks, required this.onChanged, required this.onImport, required this.onExport});
+  final int themeIndex;
+  final ValueChanged<int> onThemeChanged;
+  const HomePage({super.key, required this.decks, required this.onChanged, required this.onImport, required this.onExport, required this.themeIndex, required this.onThemeChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +25,7 @@ class HomePage extends StatelessWidget {
           actions: [
             IconButton(onPressed: onImport, icon: const Icon(Icons.file_download_outlined), tooltip: 'Import'),
             IconButton(onPressed: onExport, icon: const Icon(Icons.file_upload_outlined), tooltip: 'Export'),
-            IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage())), icon: const Icon(Icons.tune_rounded)),
+            IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsPage(themeIndex: themeIndex, onThemeChanged: onThemeChanged))), icon: const Icon(Icons.tune_rounded)),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
@@ -49,7 +51,7 @@ class HomePage extends StatelessWidget {
   Widget _deckTile(Deck d) => Row(children: [
         Container(width: 54, height: 54, decoration: BoxDecoration(color: Color(int.parse('FF${d.colorHex}', radix: 16)), borderRadius: BorderRadius.circular(17)), child: const Icon(Icons.layers_rounded)),
         const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(d.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text('${d.cards.length} کارت • ${dueCount(d)} کارت آماده مرور', style: const TextStyle(color: Colors.white60))])),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(d.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text('${d.cards.length} کارت • ${dueCount(d)} کارت آماده مرور', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(.58)))])),
         const Icon(Icons.chevron_left_rounded),
       ]);
 
@@ -65,5 +67,5 @@ class HomePage extends StatelessWidget {
 class _Stat extends StatelessWidget {
   final String title, value; final IconData icon;
   const _Stat(this.title, this.value, this.icon);
-  @override Widget build(BuildContext context) => AnimatedGlassCard(child: Row(children: [Icon(icon, color: const Color(0xFF9A92FF)), const SizedBox(width: 12), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(value, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900)), Text(title, style: const TextStyle(color: Colors.white60))])]));
+  @override Widget build(BuildContext context) => AnimatedGlassCard(child: Row(children: [Icon(icon, color: const Color(0xFF9A92FF)), const SizedBox(width: 12), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(value, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900)), Text(title, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(.58)))])]));
 }
