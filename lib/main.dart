@@ -10,18 +10,6 @@ import 'features/home/home_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  ErrorWidget.builder = (details) => Material(
-        color: const Color(0xFFF3F6FF),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Parin Litner\n\nخطای نمایش این بخش رخ داد. لطفاً دوباره تلاش کنید.',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      );
   runApp(const ParinLitnerApp());
 }
 
@@ -117,35 +105,42 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
 
   Future<void> _export() async { try { await backup.exportDecks(decks); } catch (_) {} }
 
+  Locale _currentLocale() {
+    final parts = settings.languageCode.split('-');
+    return Locale.fromSubtags(
+      languageCode: parts.first,
+      countryCode: parts.length > 1 ? parts[1] : null,
+    );
+  }
+
+  List<Locale> _supportedLocales() => [
+    for (final language in AppSettings.languages)
+      () {
+        final parts = language.code.split('-');
+        return Locale.fromSubtags(
+          languageCode: parts.first,
+          countryCode: parts.length > 1 ? parts[1] : null,
+        );
+      }(),
+  ];
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
         animation: settings,
         builder: (context, _) {
-          final localeParts = settings.languageCode.split('-');
-          final locale = Locale.fromSubtags(
-            languageCode: localeParts.first,
-            countryCode: localeParts.length > 1 ? localeParts[1] : null,
-          );
+          final locale = _currentLocale();
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Parin Litner',
             locale: locale,
-            supportedLocales: [
-              for (final l in AppSettings.languages)
-                Locale.fromSubtags(
-                  languageCode: l.code.split('-').first,
-                  countryCode: l.code.contains('-') ? l.code.split('-')[1] : null,
-                ),
-            ],
+            supportedLocales: _supportedLocales(),
             theme: AppTheme.light(settings.themeIndex, glass: settings.glass, glassOpacity: settings.glassOpacity),
-            home: LocaleScope(
-              settings: settings,
-              child: Directionality(
-                textDirection: settings.language.rtl ? TextDirection.rtl : TextDirection.ltr,
-                child: loading
-                    ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-                    : HomePage(decks: decks, onChanged: _save, onImport: _import, onExport: _export, settings: settings),
-              ),
+            home: Directionality(
+              key: ValueKey('${settings.languageCode}-${settings.themeIndex}-${settings.glassOpacity}'),
+              textDirection: settings.language.rtl ? TextDirection.rtl : TextDirection.ltr,
+              child: loading
+                  ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+                  : HomePage(decks: decks, onChanged: _save, onImport: _import, onExport: _export, settings: settings),
             ),
           );
         },
