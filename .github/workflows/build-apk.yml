@@ -30,59 +30,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Verify Android launcher package
+        run: |
+          test -f android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
+          grep -q 'package com.parin.parin_litner' android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
+          grep -q 'com.parin.parin_litner.MainActivity' android/app/src/main/AndroidManifest.xml
+
       - name: Set Android app label
         run: |
           sed -i 's/android:label="parin_litner"/android:label="Parin Litner"/' android/app/src/main/AndroidManifest.xml || true
-
-      - name: Configure stable release signing
-        shell: bash
-        env:
-          KEYSTORE_B64: ${{ secrets.PARIN_KEYSTORE_B64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.PARIN_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.PARIN_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.PARIN_KEY_PASSWORD }}
-          KEYSTORE_PATH: ${{ runner.temp }}/parin-release.jks
-        run: |
-          set -euo pipefail
-
-          test -n "$KEYSTORE_B64" || { echo 'Missing GitHub Actions secret: PARIN_KEYSTORE_B64'; exit 1; }
-          test -n "$KEYSTORE_PASSWORD" || { echo 'Missing GitHub Actions secret: PARIN_KEYSTORE_PASSWORD'; exit 1; }
-          test -n "$KEY_ALIAS" || { echo 'Missing GitHub Actions secret: PARIN_KEY_ALIAS'; exit 1; }
-          test -n "$KEY_PASSWORD" || { echo 'Missing GitHub Actions secret: PARIN_KEY_PASSWORD'; exit 1; }
-
-          echo "$KEYSTORE_B64" | tr -d '\r\n ' | base64 --decode > "$KEYSTORE_PATH"
-          test -s "$KEYSTORE_PATH" || { echo 'Decoded keystore is empty'; exit 1; }
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path('android/app/build.gradle.kts')
-          s = p.read_text()
-
-          signing = '''
-              signingConfigs {
-                  create("parinRelease") {
-                      storeFile = file(requireNotNull(System.getenv("PARIN_KEYSTORE_PATH")))
-                      storePassword = requireNotNull(System.getenv("PARIN_KEYSTORE_PASSWORD"))
-                      keyAlias = requireNotNull(System.getenv("PARIN_KEY_ALIAS"))
-                      keyPassword = requireNotNull(System.getenv("PARIN_KEY_PASSWORD"))
-                  }
-              }
-          '''
-
-          if 'create("parinRelease")' not in s:
-              marker = '    buildTypes {'
-              if marker not in s:
-                  raise SystemExit('Could not locate buildTypes in generated Android Gradle file')
-              s = s.replace(marker, signing + '\n' + marker, 1)
-
-          s = s.replace(
-              'signingConfig = signingConfigs.getByName("debug")',
-              'signingConfig = signingConfigs.getByName("parinRelease")'
-          )
-
-          p.write_text(s)
-          PY
 
       - name: Install dependencies
         run: flutter pub get
@@ -91,15 +47,12 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Build APK
-        shell: bash
-        env:
-          PARIN_KEYSTORE_PATH: ${{ runner.temp }}/parin-release.jks
-          PARIN_KEYSTORE_PASSWORD: ${{ secrets.PARIN_KEYSTORE_PASSWORD }}
-          PARIN_KEY_ALIAS: ${{ secrets.PARIN_KEY_ALIAS }}
-          PARIN_KEY_PASSWORD: ${{ secrets.PARIN_KEY_PASSWORD }}
+        run: flutter build apk --release
+
+      - name: Verify APK
         run: |
-          test -s "$PARIN_KEYSTORE_PATH" || { echo 'Release keystore is missing'; exit 1; }
-          flutter build apk --release
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          unzip -p build/app/outputs/flutter-apk/app-release.apk classes.dex | strings | grep -q 'com/parin/parin_litner/MainActivity'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
