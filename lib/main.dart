@@ -4,6 +4,7 @@ import 'core/models/app_settings.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/backup_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/helpers.dart';
 import 'features/home/home_page.dart';
 
 void main() {
@@ -13,6 +14,7 @@ void main() {
 
 class ParinLitnerApp extends StatefulWidget {
   const ParinLitnerApp({super.key});
+
   @override
   State<ParinLitnerApp> createState() => _ParinLitnerAppState();
 }
@@ -40,7 +42,12 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
         FlashCard(id: '2', front: 'Flutter چیست؟', back: 'فریم‌ورک ساخت رابط کاربری چندسکویی با Dart.'),
       ]);
     }
-    if (mounted) setState(() { decks = data; loading = false; });
+    if (mounted) {
+      setState(() {
+        decks = data;
+        loading = false;
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -52,41 +59,109 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
     try {
       final incoming = await backup.importDecks();
       if (incoming == null || !mounted) return;
+
       final replace = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Import کارت‌ها'),
-          content: Text('${incoming.length} دسته پیدا شد. داده‌های فعلی جایگزین شوند؟'),
+          title: const Text('وارد کردن پشتیبان'),
+          content: Text(
+            '${incoming.length} دسته پیدا شد.\n\n'
+            '«ادغام» اطلاعات جدید را کنار اطلاعات فعلی اضافه می‌کند.\n'
+            '«جایگزینی» کل اطلاعات فعلی را با فایل پشتیبان عوض می‌کند.',
+          ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('ادغام')),
             FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('جایگزینی')),
           ],
         ),
       );
-      if (replace == true) {
+
+      if (replace == null) return;
+
+      if (replace) {
         decks = incoming;
       } else {
-        for (final d in incoming) {
-          final i = decks.indexWhere((x) => x.name == d.name);
-          if (i < 0) {
-            decks.add(d);
-          } else {
-            decks[i].cards.addAll(d.cards);
+        for (final sourceDeck in incoming) {
+          final targetIndex = decks.indexWhere(
+            (target) => target.name.trim().toLowerCase() == sourceDeck.name.trim().toLowerCase(),
+          );
+
+          if (targetIndex < 0) {
+            decks.add(sourceDeck);
+            continue;
+          }
+
+          final target = decks[targetIndex];
+          final boxIndexMap = <int, int>{};
+
+          for (var sourceIndex = 0; sourceIndex < sourceDeck.boxes.length; sourceIndex++) {
+            final sourceBox = sourceDeck.boxes[sourceIndex];
+            var targetBoxIndex = target.boxes.indexWhere(
+              (box) => box.name.trim().toLowerCase() == sourceBox.name.trim().toLowerCase(),
+            );
+
+            if (targetBoxIndex < 0) {
+              target.boxes.add(
+                LeitnerBox(
+                  id: uid(),
+                  name: sourceBox.name,
+                  colorValue: sourceBox.colorValue,
+                ),
+              );
+              targetBoxIndex = target.boxes.length - 1;
+            }
+            boxIndexMap[sourceIndex] = targetBoxIndex;
+          }
+
+          final existingIds = target.cards.map((card) => card.id).toSet();
+          for (final sourceCard in sourceDeck.cards) {
+            if (existingIds.contains(sourceCard.id)) continue;
+            final copied = FlashCard(
+              id: uid(),
+              front: sourceCard.front,
+              back: sourceCard.back,
+              tags: sourceCard.tags,
+              boxIndex: boxIndexMap[sourceCard.boxIndex] ?? 0,
+              dueAt: sourceCard.dueAt,
+              favorite: sourceCard.favorite,
+              reviews: sourceCard.reviews,
+              lapses: sourceCard.lapses,
+            );
+            target.cards.add(copied);
+            existingIds.add(copied.id);
           }
         }
       }
+
       await _save();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${incoming.length} دسته با موفقیت وارد شد ✓')),
+        );
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import ناموفق بود: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('وارد کردن فایل ناموفق بود: $e')),
+        );
+      }
     }
   }
 
   Future<void> _export() async {
     try {
       final ok = await backup.exportDecks(decks);
-      if (ok && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فایل پشتیبان ذخیره شد')));
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فایل پشتیبان ذخیره شد ✓')),
+        );
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export ناموفق بود: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خروجی گرفتن ناموفق بود: $e')),
+        );
+      }
     }
   }
 
@@ -97,7 +172,11 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
       builder: (_, __) => MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Parin Litner',
-        theme: AppTheme.light(settings.themeIndex, glass: settings.glass, glassOpacity: settings.glassOpacity),
+        theme: AppTheme.light(
+          settings.themeIndex,
+          glass: settings.glass,
+          glassOpacity: settings.glassOpacity,
+        ),
         home: Directionality(
           textDirection: TextDirection.rtl,
           child: loading
