@@ -122,16 +122,19 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _deckTile(BuildContext context, Deck deck) {
+    final color = Color(int.parse('FF${deck.colorHex}', radix: 16));
+    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: .58);
+
     return Row(
       children: [
         Container(
           width: 54,
           height: 54,
           decoration: BoxDecoration(
-            color: Color(int.parse('FF${deck.colorHex}', radix: 16)),
+            color: color,
             borderRadius: BorderRadius.circular(17),
           ),
-          child: const Icon(Icons.layers_rounded),
+          child: const Icon(Icons.layers_rounded, color: Colors.white),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -140,17 +143,12 @@ class HomePage extends StatelessWidget {
             children: [
               Text(
                 deck.name,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 4),
               Text(
                 '${deck.cards.length} کارت • ${dueCount(deck)} کارت آماده مرور',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .58),
-                ),
+                style: TextStyle(color: muted),
               ),
             ],
           ),
@@ -199,24 +197,17 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: .58);
     return AnimatedGlassCard(
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF6D63FF)),
+          Icon(icon, color: const Color(0xFF7567E8)),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                value,
-                style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
-              ),
-              Text(
-                title,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .58),
-                ),
-              ),
+              Text(value, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
+              Text(title, style: TextStyle(color: muted)),
             ],
           ),
         ],
