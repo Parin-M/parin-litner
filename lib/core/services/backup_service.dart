@@ -11,23 +11,40 @@ class BackupService {
       'exportedAt': DateTime.now().toIso8601String(),
       'decks': decks.map((e) => e.toJson()).toList(),
     };
-    final bytes = Uint8List.fromList(utf8.encode(const JsonEncoder.withIndent('  ').convert(payload)));
-    final path = await FilePicker.platform.saveFile(
+
+    final bytes = Uint8List.fromList(
+      utf8.encode(const JsonEncoder.withIndent('  ').convert(payload)),
+    );
+
+    // file_picker 12 uses static facade methods rather than FilePicker.platform.
+    final output = await FilePicker.saveFile(
       dialogTitle: 'ذخیره پشتیبان Parin Litner',
       fileName: 'parin_litner_backup.json',
       type: FileType.custom,
       allowedExtensions: ['json'],
       bytes: bytes,
+      mimeType: 'application/json',
     );
-    return path != null;
+
+    return output != null;
   }
 
   Future<List<Deck>?> importDecks() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json'], withData: true);
-    if (result == null || result.files.single.bytes == null) return null;
-    final text = utf8.decode(result.files.single.bytes!);
+    final files = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+
+    if (files.isEmpty) return null;
+
+    final file = files.first;
+    final bytes = await file.readAsBytes();
+    final text = utf8.decode(bytes);
     final decoded = jsonDecode(text) as Map<String, dynamic>;
-    final list = (decoded['decks'] as List?) ?? [];
-    return list.map((e) => Deck.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    final list = (decoded['decks'] as List?) ?? const [];
+
+    return list
+        .map((e) => Deck.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
   }
 }
