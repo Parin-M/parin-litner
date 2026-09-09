@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class AppTheme {
@@ -25,17 +24,8 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: const Color(0xFFF1F5FC),
       fontFamily: 'sans-serif',
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: false,
-      ),
-      cardTheme: CardThemeData(
-        color: surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      ),
+      appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0, surfaceTintColor: Colors.transparent, centerTitle: false),
+      cardTheme: CardThemeData(color: surface, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white.withValues(alpha: glass ? .72 : 1),
@@ -45,15 +35,13 @@ class AppTheme {
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(backgroundColor: t.primary, foregroundColor: Colors.white),
       filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: t.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)))),
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
-          TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
-          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
-        },
-      ),
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+      }),
     );
   }
 }
