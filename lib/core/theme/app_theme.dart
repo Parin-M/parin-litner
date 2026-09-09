@@ -11,19 +11,22 @@ class AppTheme {
     ThemeOption('لیمو', Color(0xFF84CC16), Color(0xFF22C55E)),
     ThemeOption('طلایی', Color(0xFFF59E0B), Color(0xFFEAB308)),
     ThemeOption('لاوندر', Color(0xFF6366F1), Color(0xFF06B6D4)),
+    ThemeOption('شیشه خالص', Color(0xFF6E8CFF), Color(0xFFB78CFF), pureGlass: true),
   ];
 
   static ThemeData light(int index, {bool glass = true, double glassOpacity = .62}) {
     final safeIndex = index.clamp(0, themes.length - 1).toInt();
     final t = themes[safeIndex];
+    final effectiveGlass = glass || t.pureGlass;
+    final surfaceAlpha = t.pureGlass ? .34 : glassOpacity;
     final scheme = ColorScheme.fromSeed(seedColor: t.primary, brightness: Brightness.light);
-    final surface = glass ? Colors.white.withValues(alpha: glassOpacity) : Colors.white;
+    final surface = effectiveGlass ? Colors.white.withValues(alpha: surfaceAlpha) : Colors.white;
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFFF1F5FC),
+      scaffoldBackgroundColor: t.pureGlass ? const Color(0xFFEAF0FF) : const Color(0xFFF1F5FC),
       fontFamily: 'sans-serif',
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -38,31 +41,13 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white.withValues(alpha: glass ? .72 : 1),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: t.primary.withValues(alpha: .10)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: t.primary.withValues(alpha: .45), width: 1.5),
-        ),
+        fillColor: Colors.white.withValues(alpha: effectiveGlass ? (t.pureGlass ? .38 : .72) : 1),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: t.primary.withValues(alpha: .10))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: t.primary.withValues(alpha: .45), width: 1.5)),
       ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: t.primary,
-        foregroundColor: Colors.white,
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: t.primary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        ),
-      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(backgroundColor: t.primary, foregroundColor: Colors.white),
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(backgroundColor: t.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)))),
     );
   }
 }
@@ -71,5 +56,6 @@ class ThemeOption {
   final String name;
   final Color primary;
   final Color secondary;
-  const ThemeOption(this.name, this.primary, this.secondary);
+  final bool pureGlass;
+  const ThemeOption(this.name, this.primary, this.secondary, {this.pureGlass = false});
 }
