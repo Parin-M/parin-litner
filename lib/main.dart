@@ -10,13 +10,27 @@ import 'features/home/home_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  ErrorWidget.builder = (details) => const _SafeErrorView();
   runApp(const ParinLitnerApp());
+}
+
+class _SafeErrorView extends StatelessWidget {
+  const _SafeErrorView();
+  @override
+  Widget build(BuildContext context) => Material(
+    color: const Color(0xFFF5F5F5),
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text('Parin Litner\n\nThis section could not be displayed.', textAlign: TextAlign.center),
+      ),
+    ),
+  );
 }
 
 class ParinLitnerApp extends StatefulWidget {
   const ParinLitnerApp({super.key});
-  @override
-  State<ParinLitnerApp> createState() => _ParinLitnerAppState();
+  @override State<ParinLitnerApp> createState() => _ParinLitnerAppState();
 }
 
 class _ParinLitnerAppState extends State<ParinLitnerApp> {
@@ -27,32 +41,21 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
   bool loading = true;
 
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  void initState() { super.initState(); _load(); }
 
   Future<void> _load() async {
-    try {
-      try { await settings.load(); } catch (_) {}
-      List<Deck> data;
-      try { data = await storage.load(); } catch (_) { data = []; }
-      if (data.isEmpty) {
-        data = [Deck(id: 'demo', name: 'شروع سریع', description: 'کارت‌های نمونه')];
-        data.first.cards.addAll([
-          FlashCard(id: '1', front: 'Leitner چیست؟', back: 'یک روش مرور فاصله‌دار برای انتقال کارت‌ها بین خانه‌ها.'),
-          FlashCard(id: '2', front: 'Flutter چیست؟', back: 'فریم‌ورک ساخت رابط کاربری چندسکویی با Dart.'),
-        ]);
-      }
-      if (!mounted) return;
-      setState(() { decks = data; loading = false; });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        decks = [Deck(id: 'demo', name: 'Parin Litner', description: 'Ready to learn')];
-        loading = false;
-      });
+    try { await settings.load(); } catch (_) {}
+    List<Deck> data;
+    try { data = await storage.load(); } catch (_) { data = []; }
+    if (data.isEmpty) {
+      data = [Deck(id: 'demo', name: 'شروع سریع', description: 'کارت‌های نمونه')];
+      data.first.cards.addAll([
+        FlashCard(id: '1', front: 'Leitner چیست؟', back: 'یک روش مرور فاصله‌دار برای انتقال کارت‌ها بین خانه‌ها.'),
+        FlashCard(id: '2', front: 'Flutter چیست؟', back: 'فریم‌ورک ساخت رابط کاربری چندسکویی با Dart.'),
+      ]);
     }
+    if (!mounted) return;
+    setState(() { decks = data; loading = false; });
   }
 
   Future<void> _save() async {
@@ -68,10 +71,10 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
         context: context,
         builder: (_) => AlertDialog(
           title: Text(AppStrings.t(context, 'import')),
-          content: Text('${incoming.length} ${AppStrings.t(context, 'backup_found')}'),
+          content: Text('${incoming.length} ${AppStrings.t(context, 'decks')}'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppStrings.t(context, 'merge'))),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(AppStrings.t(context, 'replace'))),
+            ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(AppStrings.t(context, 'replace'))),
           ],
         ),
       );
@@ -105,44 +108,35 @@ class _ParinLitnerAppState extends State<ParinLitnerApp> {
 
   Future<void> _export() async { try { await backup.exportDecks(decks); } catch (_) {} }
 
-  Locale _currentLocale() {
-    final parts = settings.languageCode.split('-');
-    return Locale.fromSubtags(
-      languageCode: parts.first,
-      countryCode: parts.length > 1 ? parts[1] : null,
-    );
-  }
-
-  List<Locale> _supportedLocales() => [
-    for (final language in AppSettings.languages)
-      () {
-        final parts = language.code.split('-');
-        return Locale.fromSubtags(
-          languageCode: parts.first,
-          countryCode: parts.length > 1 ? parts[1] : null,
-        );
-      }(),
-  ];
-
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-        animation: settings,
-        builder: (context, _) {
-          final locale = _currentLocale();
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            title: 'Parin Litner',
-            locale: locale,
-            supportedLocales: _supportedLocales(),
-            theme: AppTheme.light(settings.themeIndex, glass: settings.glass, glassOpacity: settings.glassOpacity),
-            home: Directionality(
-              key: ValueKey('${settings.languageCode}-${settings.themeIndex}-${settings.glassOpacity}'),
-              textDirection: settings.language.rtl ? TextDirection.rtl : TextDirection.ltr,
-              child: loading
-                  ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-                  : HomePage(decks: decks, onChanged: _save, onImport: _import, onExport: _export, settings: settings),
-            ),
-          );
+    animation: settings,
+    builder: (context, _) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Parin Litner',
+        locale: settings.locale,
+        supportedLocales: AppStrings.supportedLocales,
+        localizationsDelegates: const [AppStrings.delegate],
+        localeResolutionCallback: (locale, supported) {
+          if (locale == null) return const Locale('fa');
+          for (final item in supported) {
+            if (item.languageCode == locale.languageCode && item.countryCode == locale.countryCode) return item;
+          }
+          for (final item in supported) {
+            if (item.languageCode == locale.languageCode) return item;
+          }
+          return const Locale('fa');
         },
+        theme: AppTheme.light(settings.themeIndex, glass: settings.glass, glassOpacity: settings.glassOpacity),
+        builder: (context, child) => Directionality(
+          textDirection: settings.language.rtl ? TextDirection.rtl : TextDirection.ltr,
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: loading
+            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+            : HomePage(decks: decks, onChanged: _save, onImport: _import, onExport: _export, settings: settings),
       );
+    },
+  );
 }
