@@ -32,25 +32,13 @@ class HomePage extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Parin Litner', style: TextStyle(fontWeight: FontWeight.w900)),
           actions: [
-            IconButton(
-              onPressed: onImport,
-              icon: const Icon(Icons.file_download_outlined),
-              tooltip: 'وارد کردن فایل',
-            ),
-            IconButton(
-              onPressed: onExport,
-              icon: const Icon(Icons.file_upload_outlined),
-              tooltip: 'خروجی گرفتن',
-            ),
+            IconButton(onPressed: onImport, icon: const Icon(Icons.file_download_outlined), tooltip: 'وارد کردن فایل'),
+            IconButton(onPressed: onExport, icon: const Icon(Icons.file_upload_outlined), tooltip: 'خروجی گرفتن'),
             IconButton(
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => SettingsPage(
-                    settings: settings,
-                    onImport: onImport,
-                    onExport: onExport,
-                  ),
+                  builder: (_) => SettingsPage(settings: settings, onImport: onImport, onExport: onExport),
                 ),
               ),
               icon: const Icon(Icons.tune_rounded),
@@ -68,13 +56,11 @@ class HomePage extends StatelessWidget {
           children: [
             _HeroBanner(total: total, due: due, goal: settings.dailyGoal),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(child: _Stat('کارت‌ها', '$total', Icons.style_rounded)),
-                const SizedBox(width: 10),
-                Expanded(child: _Stat('امروز', '$due', Icons.bolt_rounded)),
-              ],
-            ),
+            Row(children: [
+              Expanded(child: _Stat('کارت‌ها', '$total', Icons.style_rounded)),
+              const SizedBox(width: 10),
+              Expanded(child: _Stat('امروز', '$due', Icons.bolt_rounded)),
+            ]),
             const SizedBox(height: 18),
             const Text('دسته‌های یادگیری', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
             const SizedBox(height: 12),
@@ -92,7 +78,9 @@ class HomePage extends StatelessWidget {
                   onTap: () async {
                     await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => DeckPage(deck: deck, onChanged: onChanged)),
+                      MaterialPageRoute(
+                        builder: (_) => DeckPage(deck: deck, onChanged: onChanged, settings: settings),
+                      ),
                     );
                     onChanged();
                   },
@@ -160,7 +148,6 @@ class _HeroBanner extends StatelessWidget {
   final int total;
   final int due;
   final int goal;
-
   const _HeroBanner({required this.total, required this.due, required this.goal});
 
   @override
@@ -205,7 +192,6 @@ class _Stat extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-
   const _Stat(this.title, this.value, this.icon);
 
   @override
