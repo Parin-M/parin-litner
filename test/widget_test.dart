@@ -13,6 +13,8 @@ void main() {
             onChanged: () {},
             onImport: () async {},
             onExport: () async {},
+                 themeIndex: 0,
+                 onThemeChanged: (_) {},
           ),
         ),
       ),
