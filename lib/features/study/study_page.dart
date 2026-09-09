@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/models/app_models.dart';
 import '../../core/models/app_settings.dart';
 
@@ -163,9 +164,7 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
           if (widget.settings.showTimer)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Center(
-                child: Text(_time(), style: const TextStyle(fontWeight: FontWeight.w800)),
-              ),
+              child: Center(child: Text(_time(), style: const TextStyle(fontWeight: FontWeight.w800))),
             ),
         ],
       ),
@@ -193,7 +192,7 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
                   builder: (_, __) {
                     final angle = flipController.value * pi;
                     final isFront = angle < pi / 2;
-                    final face = isFront
+                    final cardFace = isFront
                         ? _FlashCardView(
                             key: const ValueKey('front'),
                             text: card.front,
@@ -216,7 +215,7 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
                       transform: Matrix4.identity()
                         ..setEntry(3, 2, 0.0015)
                         ..rotateY(angle),
-                      child: face,
+                      child: cardFace,
                     );
                   },
                 ),
@@ -224,11 +223,7 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
             ),
             const SizedBox(height: 14),
             if (revealed) ...[
-              const Text(
-                'برای امتیازدهی، کارت را به چپ یا راست هم بکشید.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12),
-              ),
+              const Text('برای امتیازدهی، کارت را به چپ یا راست هم بکشید.', textAlign: TextAlign.center, textDirection: TextDirection.rtl, style: TextStyle(fontSize: 12)),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -244,7 +239,7 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
             ] else
               const Padding(
                 padding: EdgeInsets.only(bottom: 8),
-                child: Text('کارت را لمس کن تا پاسخ را ببینی.'),
+                child: Text('کارت را لمس کن تا پاسخ را ببینی.', textDirection: TextDirection.rtl),
               ),
           ],
         ),
@@ -275,16 +270,11 @@ class _FlashCardView extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: .78),
-            scheme.primary.withValues(alpha: .06),
-          ],
+          colors: [Colors.white.withValues(alpha: .78), scheme.primary.withValues(alpha: .06)],
         ),
         borderRadius: BorderRadius.circular(34),
         border: Border.all(color: Colors.white.withValues(alpha: .82), width: 1.4),
-        boxShadow: [
-          BoxShadow(color: scheme.primary.withValues(alpha: .13), blurRadius: 34, spreadRadius: 2),
-        ],
+        boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: .13), blurRadius: 34, spreadRadius: 2)],
       ),
       child: Center(
         child: Column(
@@ -292,20 +282,12 @@ class _FlashCardView extends StatelessWidget {
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
-              child: Icon(
-                revealed ? Icons.lightbulb_rounded : Icons.help_outline_rounded,
-                key: ValueKey(revealed),
-                size: 48,
-                color: scheme.primary,
-              ),
+              child: Icon(revealed ? Icons.lightbulb_rounded : Icons.help_outline_rounded, key: ValueKey(revealed), size: 48, color: scheme.primary),
             ),
             const SizedBox(height: 22),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 280),
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(scale: animation, child: child),
-              ),
+              transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: ScaleTransition(scale: animation, child: child)),
               child: Text(
                 text,
                 key: ValueKey(text),
@@ -315,12 +297,7 @@ class _FlashCardView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              textDirection: TextDirection.rtl,
-              style: TextStyle(color: scheme.onSurface.withValues(alpha: .52), fontWeight: FontWeight.w600),
-            ),
+            Text(label, textAlign: TextAlign.center, textDirection: TextDirection.rtl, style: TextStyle(color: scheme.onSurface.withValues(alpha: .52), fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -333,21 +310,15 @@ class _Rate extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-
   const _Rate(this.text, this.icon, this.color, this.onTap);
 
   @override
-  Widget build(BuildContext context) => FilledButton.tonalIcon(
-        onPressed: onTap,
-        icon: Icon(icon, color: color),
-        label: Text(text),
-      );
+  Widget build(BuildContext context) => FilledButton.tonalIcon(onPressed: onTap, icon: Icon(icon, color: color), label: Text(text, textDirection: TextDirection.rtl));
 }
 
 class _CompletionDialog extends StatelessWidget {
   final int count;
   final int seconds;
-
   const _CompletionDialog({required this.count, required this.seconds});
 
   @override
@@ -362,20 +333,14 @@ class _CompletionDialog extends StatelessWidget {
               tween: Tween(begin: 0, end: 1),
               duration: const Duration(milliseconds: 700),
               curve: Curves.elasticOut,
-              builder: (_, value, __) => Transform.scale(
-                scale: value,
-                child: const Icon(Icons.emoji_events_rounded, size: 72),
-              ),
+              builder: (_, value, __) => Transform.scale(scale: value, child: const Icon(Icons.emoji_events_rounded, size: 72)),
             ),
             const SizedBox(height: 12),
-            const Text('جلسه تمام شد! 🎉', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+            const Text('جلسه تمام شد! 🎉', textDirection: TextDirection.rtl, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
-            Text('$count کارت در ${seconds ~/ 60} دقیقه و ${seconds % 60} ثانیه'),
+            Text('$count کارت در ${seconds ~/ 60} دقیقه و ${seconds % 60} ثانیه', textDirection: TextDirection.rtl),
             const SizedBox(height: 18),
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('عالیه'),
-            ),
+            FilledButton(onPressed: () => Navigator.pop(context), child: const Text('عالیه', textDirection: TextDirection.rtl)),
           ],
         ),
       ),
