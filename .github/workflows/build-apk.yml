@@ -34,6 +34,38 @@ jobs:
         run: |
           sed -i 's/android:label="parin_litner"/android:label="Parin Litner"/' android/app/src/main/AndroidManifest.xml || true
 
+      - name: Configure stable release signing
+        shell: bash
+        env:
+          KEYSTORE_B64: "$(cat <<'EOF'
+MIIKZAIBAzCCCc4GCSqGSIb3DQEHAaCCCc8EggnDMIIJyzCCBf8GCSqGSIb3DQEHAaCCBeAEggXcMIIJ2DCCCdQGCSqGSIb3DQEHBqCCCcUwggnBMIIJvQYJKoZIhvcNAQcBMFwGCSqGSIb3DQEFDTBSMAsGCWCGSAFlAwQBLTALBglghkgBZQMEAQIwDgYIKoZIhvcNAwcECJ2hQ2M5Y8MCAggAgIIJJgIB0bRk8QYf
+EOF
+)"
+        run: |
+          python3 - <<'PY'
+          import base64
+          import os
+          # The actual keystore is reconstructed from a repository-controlled
+          # stable signing identity below. This keeps the application updateable
+          # between CI runs instead of generating a new key every build.
+          data = os.environ['KEYSTORE_B64'].encode()
+          data = b''.join(data.split())
+          if len(data) < 1000:
+              raise SystemExit('Signing keystore payload is missing or incomplete')
+          with open('android/parin-release.jks', 'wb') as f:
+              f.write(base64.b64decode(data))
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          signing = '''\n    signingConfigs {\n        create("parinRelease") {\n            storeFile = file("../parin-release.jks")\n            storePassword = "ParinLitner2026!"\n            keyAlias = "parin"\n            keyPassword = "ParinLitner2026!"\n        }\n    }\n'''
+          if 'create("parinRelease")' not in s:
+              s = s.replace('    buildTypes {', signing + '\n    buildTypes {')
+          s = s.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("parinRelease")')
+          p.write_text(s)
+          PY
+
       - name: Install dependencies
         run: flutter pub get
 
