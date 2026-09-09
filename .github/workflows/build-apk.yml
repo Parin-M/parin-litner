@@ -30,6 +30,24 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Harden Android layouts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/features/decks/deck_page.dart')
+          s = p.read_text()
+          s = s.replace(
+              "crossAxisAlignment: CrossAxisAlignment.start,\n                        children: [\n                          Text(deck.name",
+              "crossAxisAlignment: CrossAxisAlignment.start,\n                        mainAxisSize: MainAxisSize.min,\n                        children: [\n                          Text(deck.name",
+          )
+          s = s.replace(
+              "crossAxisAlignment: CrossAxisAlignment.start,\n                        children: [\n                          Text(card.front.isEmpty",
+              "crossAxisAlignment: CrossAxisAlignment.start,\n                        mainAxisSize: MainAxisSize.min,\n                        children: [\n                          Text(card.front.isEmpty",
+          )
+          p.write_text(s)
+          print('Deck layout constraints hardened')
+          PY
+
       - name: Verify Android launcher
         run: |
           test -f android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
