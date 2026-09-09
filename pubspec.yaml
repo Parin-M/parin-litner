@@ -1,7 +1,7 @@
 name: parin_litner
-description: Parin Litner - a modern Persian Leitner flashcard app.
+description: Parin Litner - a modern multilingual Leitner flashcard app.
 publish_to: 'none'
-version: 5.0.2+7
+version: 6.0.0+8
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -13,6 +13,8 @@ dependencies:
   shared_preferences: ^2.5.5
   file_picker: ^12.2.0
 
+  flutter_launcher_icons: ^0.14.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -22,3 +24,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/parin_litner_icon.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/parin_litner_icon.png
+  adaptive_icon_background: '#17142B'
+  adaptive_icon_foreground: assets/parin_litner_icon.png
+  min_sdk_android: 21
