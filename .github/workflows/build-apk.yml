@@ -40,75 +40,51 @@ jobs:
         run: |
           sed -i 's/android:label="parin_litner"/android:label="Parin Litner"/' android/app/src/main/AndroidManifest.xml || true
 
-      - name: Prepare exact logo and offline focus audio
+      - name: Apply Parin Litner logo and prepare focus audio
         run: |
           mkdir -p assets/audio
-          base64 -d tools/parin_litner_icon.b64 > assets/parin_litner_icon.png
+          test -s assets/parin_litner_icon.png
+          python3 - <<'PY'
+          import struct, zlib
+          p='assets/parin_litner_icon.png'; b=open(p,'rb').read()
+          assert b[:8] == b'\x89PNG\r\n\x1a\n', 'Logo is not PNG'
+          pos=8
+          while pos < len(b):
+              n=struct.unpack('>I',b[pos:pos+4])[0]; t=b[pos+4:pos+8]; d=b[pos+8:pos+8+n]
+              c=struct.unpack('>I',b[pos+8+n:pos+12+n])[0]
+              assert zlib.crc32(t+d)&0xffffffff == c, 'PNG CRC mismatch'
+              pos += 12+n
+              if t == b'IEND': break
+          assert pos <= len(b), 'PNG truncated'
+          print('Valid logo PNG:', len(b), 'bytes')
+          PY
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp assets/parin_litner_icon.png android/app/src/main/res/mipmap-$d/ic_launcher.png; done
           python3 - <<'PY'
           import math, random, struct, wave, os
-          sr = 22050
-          duration = 18
-          n = sr * duration
-          out = 'assets/audio'
-          random.seed(20260909)
-
-          def write_wav(name, sample_fn):
-              path = os.path.join(out, name)
-              with wave.open(path, 'w') as w:
+          sr=22050; duration=18; n=sr*duration; out='assets/audio'; random.seed(20260909)
+          def write(name, fn):
+              with wave.open(os.path.join(out,name),'w') as w:
                   w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr)
-                  frames = bytearray()
-                  for i in range(n):
-                      t = i / sr
-                      x = max(-1.0, min(1.0, sample_fn(t)))
-                      frames += struct.pack('<h', int(x * 26000))
+                  frames=bytearray()
+                  for i in range(n): frames += struct.pack('<h', int(max(-1,min(1,fn(i/sr)))*26000))
                   w.writeframes(frames)
-
-          def note(t, freq, start, length, amp=0.12):
-              if t < start or t > start + length: return 0.0
-              u = t - start
-              env = min(1.0, u * 7.0) * min(1.0, (length - u) * 2.0)
-              return amp * env * (math.sin(2*math.pi*freq*u) + .35*math.sin(2*math.pi*freq*2*u))
-
-          chords = [(261.63,329.63,392.00,493.88),(220.00,261.63,329.63,392.00),(246.94,293.66,369.99,440.00),(196.00,246.94,293.66,392.00)]
+          def note(t,f,s,l,a=.12):
+              if t<s or t>s+l: return 0
+              u=t-s; e=min(1,u*7)*min(1,(l-u)*2)
+              return a*e*(math.sin(2*math.pi*f*u)+.35*math.sin(4*math.pi*f*u))
+          ch=[(261.63,329.63,392,493.88),(220,261.63,329.63,392),(246.94,293.66,369.99,440),(196,246.94,293.66,392)]
           def lofi(t):
-              x = 0.0
-              bar = 4.5
-              for b in range(4):
-                  start = b * bar
-                  for j, f in enumerate(chords[b]): x += note(t, f, start, bar-.15, .045 if j else .065)
-              beat = t % 1.125
-              x += 0.18 * math.exp(-beat*22) * math.sin(2*math.pi*58*t)
-              if .52 < beat < .70: x += .035 * random.uniform(-1,1)
-              x += .010 * random.uniform(-1,1)
-              return x
-
-          def rainy(t):
-              # Soft filtered rain bed with occasional droplets.
-              noise = random.uniform(-1,1)
-              x = .028 * noise
-              for k in range(3):
-                  phase = (t * (0.13 + k*.07)) % 1.0
-                  x += .015 * math.sin(2*math.pi*(95+k*41)*t) * (0.25 + .75*phase)
-              drop = math.sin(2*math.pi*680*(t % 3.7)) * math.exp(-((t % 3.7)-.03)*45) if (t % 3.7) < .18 else 0
-              return x + .035*drop
-
-          def deep(t):
-              x = .025*math.sin(2*math.pi*55*t) + .018*math.sin(2*math.pi*82.5*t)
-              x += .012*math.sin(2*math.pi*110*t + math.sin(t*.3))
-              pulse = (math.sin(2*math.pi*t/6.0)+1)/2
-              x += .012*pulse*math.sin(2*math.pi*220*t)
-              return x
-
-          write_wav('lofi_night.wav', lofi)
-          write_wav('rainy_focus.wav', rainy)
-          write_wav('deep_focus.wav', deep)
+              x=0; bar=4.5
+              for j in range(4):
+                  for k,f in enumerate(ch[j]): x+=note(t,f,j*bar,bar-.15,.045 if k else .065)
+              beat=t%1.125; return x+.18*math.exp(-beat*22)*math.sin(2*math.pi*58*t)+.01*random.uniform(-1,1)
+          def rain(t): return .028*random.uniform(-1,1)+.015*sum(math.sin(2*math.pi*(95+k*41)*t) for k in range(3))
+          def deep(t): return .025*math.sin(2*math.pi*55*t)+.018*math.sin(2*math.pi*82.5*t)+.012*math.sin(2*math.pi*110*t+math.sin(t*.3))
+          write('lofi_night.wav',lofi); write('rainy_focus.wav',rain); write('deep_focus.wav',deep)
           PY
 
       - name: Install dependencies
         run: flutter pub get
-
-      - name: Generate launcher icon
-        run: dart run flutter_launcher_icons
 
       - name: Analyze
         run: flutter analyze --no-fatal-infos
