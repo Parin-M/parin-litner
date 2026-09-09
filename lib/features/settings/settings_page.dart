@@ -37,6 +37,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Text(s('ui_language'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 6), Text(s('choose_language')), const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+            key: ValueKey('language-${widget.settings.languageCode}'),
             initialValue: widget.settings.languageCode,
             isExpanded: true,
             decoration: InputDecoration(prefixIcon: const Icon(Icons.language_rounded), labelText: s('language')),
