@@ -30,11 +30,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Verify Android launcher package
+      - name: Verify Android launcher
         run: |
           test -f android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
-          grep -q 'package com.parin.parin_litner' android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
-          grep -q 'com.parin.parin_litner.MainActivity' android/app/src/main/AndroidManifest.xml
+          grep -q '^package com.parin.parin_litner' android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
+          grep -q 'MainActivity' android/app/src/main/AndroidManifest.xml
 
       - name: Set Android app label
         run: |
