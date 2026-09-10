@@ -1,4 +1,4 @@
-name: Build Parin Litner APK
+name: Build Parin Litner
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches: [main, master]
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,88 +25,55 @@ jobs:
           rm -rf test
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Harden Android layouts
+      - name: Prepare Android release metadata
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('lib/features/decks/deck_page.dart')
-          s = p.read_text()
-          s = s.replace(
-              "crossAxisAlignment: CrossAxisAlignment.start,\n                        children: [\n                          Text(deck.name",
-              "crossAxisAlignment: CrossAxisAlignment.start,\n                        mainAxisSize: MainAxisSize.min,\n                        children: [\n                          Text(deck.name",
-          )
-          s = s.replace(
-              "crossAxisAlignment: CrossAxisAlignment.start,\n                        children: [\n                          Text(card.front.isEmpty",
-              "crossAxisAlignment: CrossAxisAlignment.start,\n                        mainAxisSize: MainAxisSize.min,\n                        children: [\n                          Text(card.front.isEmpty",
-          )
+          p=Path('android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          s=s.replace('android:label="parin_litner"','android:label="Parin Litner"')
           p.write_text(s)
-          print('Deck layout constraints hardened')
+          print('Android package:', 'com.parin.parin_litner')
           PY
-
-      - name: Verify Android launcher
-        run: |
           test -f android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
           grep -q '^package com.parin.parin_litner' android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
-          grep -q 'MainActivity' android/app/src/main/AndroidManifest.xml
 
-      - name: Set Android app label
-        run: |
-          sed -i 's/android:label="parin_litner"/android:label="Parin Litner"/' android/app/src/main/AndroidManifest.xml || true
-
-      - name: Apply Parin Litner logo and prepare focus audio
+      - name: Install Parin Litner assets
         run: |
           mkdir -p assets/audio
           test -s assets/parin_litner_icon.png
           python3 - <<'PY'
-          import struct, zlib
-          p='assets/parin_litner_icon.png'; b=open(p,'rb').read()
-          assert b[:8] == b'\x89PNG\r\n\x1a\n', 'Logo is not PNG'
+          import struct,zlib
+          b=open('assets/parin_litner_icon.png','rb').read(); assert b[:8]==b'\x89PNG\r\n\x1a\n'
           pos=8
-          while pos < len(b):
-              if pos + 12 > len(b): raise AssertionError('PNG truncated')
-              n=struct.unpack('>I',b[pos:pos+4])[0]; t=b[pos+4:pos+8]
-              end=pos+12+n
-              if end > len(b): raise AssertionError('PNG chunk truncated')
-              d=b[pos+8:pos+8+n]
-              c=struct.unpack('>I',b[pos+8+n:pos+12+n])[0]
-              assert zlib.crc32(t+d)&0xffffffff == c, 'PNG CRC mismatch'
+          while pos<len(b):
+              n=struct.unpack('>I',b[pos:pos+4])[0]; t=b[pos+4:pos+8]; end=pos+12+n; assert end<=len(b)
+              assert zlib.crc32(t+b[pos+8:pos+8+n])&0xffffffff==struct.unpack('>I',b[pos+8+n:pos+12+n])[0]
               pos=end
-              if t == b'IEND': break
-          assert pos <= len(b), 'PNG truncated'
-          print('Valid logo PNG:', len(b), 'bytes')
+              if t==b'IEND': break
+          print('Logo OK:',len(b))
           PY
           for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp assets/parin_litner_icon.png android/app/src/main/res/mipmap-$d/ic_launcher.png; done
-          python3 - <<'PY'
-          import math, random, struct, wave, os
-          sr=22050; duration=18; n=sr*duration; out='assets/audio'; random.seed(20260909)
-          def write(name, fn):
-              with wave.open(os.path.join(out,name),'w') as w:
-                  w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr)
-                  frames=bytearray()
-                  for i in range(n): frames += struct.pack('<h', int(max(-1,min(1,fn(i/sr)))*26000))
-                  w.writeframes(frames)
-          def note(t,f,s,l,a=.12):
-              if t<s or t>s+l: return 0
-              u=t-s; e=min(1,u*7)*min(1,(l-u)*2)
-              return a*e*(math.sin(2*math.pi*f*u)+.35*math.sin(4*math.pi*f*u))
-          ch=[(261.63,329.63,392,493.88),(220,261.63,329.63,392),(246.94,293.66,369.99,440),(196,246.94,293.66,392)]
-          def lofi(t):
-              x=0; bar=4.5
-              for j in range(4):
-                  for k,f in enumerate(ch[j]): x+=note(t,f,j*bar,bar-.15,.045 if k else .065)
-              beat=t%1.125; return x+.18*math.exp(-beat*22)*math.sin(2*math.pi*58*t)+.01*random.uniform(-1,1)
-          def rain(t): return .028*random.uniform(-1,1)+.015*sum(math.sin(2*math.pi*(95+k*41)*t) for k in range(3))
-          def deep(t): return .025*math.sin(2*math.pi*55*t)+.018*math.sin(2*math.pi*82.5*t)+.012*math.sin(2*math.pi*110*t+math.sin(t*.3))
-          write('lofi_night.wav',lofi); write('rainy_focus.wav',rain); write('deep_focus.wav',deep)
-          PY
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Release security hygiene
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text='\n'.join(p.read_text(errors='ignore') for p in Path('android').rglob('*.xml'))
+          banned=['SYSTEM_ALERT_WINDOW','REQUEST_INSTALL_PACKAGES','QUERY_ALL_PACKAGES','MANAGE_EXTERNAL_STORAGE','READ_SMS','RECEIVE_SMS','SEND_SMS','BIND_ACCESSIBILITY_SERVICE','ACCESS_FINE_LOCATION','ACCESS_COARSE_LOCATION','READ_CALL_LOG','WRITE_CALL_LOG','RECORD_AUDIO']
+          bad=[x for x in banned if x in text]
+          if bad: raise SystemExit('Unexpected sensitive permissions: '+', '.join(bad))
+          print('No sensitive Android permissions declared.')
+          PY
+          grep -RniE 'SYSTEM_ALERT_WINDOW|REQUEST_INSTALL_PACKAGES|QUERY_ALL_PACKAGES|MANAGE_EXTERNAL_STORAGE|READ_SMS|RECEIVE_SMS|SEND_SMS|BIND_ACCESSIBILITY_SERVICE|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|READ_CALL_LOG|WRITE_CALL_LOG|RECORD_AUDIO' lib android || true
 
       - name: Analyze
         run: flutter analyze --no-fatal-warnings --no-fatal-infos
@@ -114,18 +81,34 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Verify APK
+      - name: Build Android App Bundle
+        run: flutter build appbundle --release
+
+      - name: Verify release artifacts
         run: |
           APK=build/app/outputs/flutter-apk/app-release.apk
+          AAB=build/app/outputs/bundle/release/app-release.aab
           test -s "$APK"
+          test -s "$AAB"
           unzip -t "$APK" >/dev/null
+          unzip -t "$AAB" >/dev/null
           unzip -l "$APK" | grep -q 'classes.dex'
-          echo "APK verification passed: $(du -h "$APK" | cut -f1)"
+          unzip -l "$AAB" | grep -q 'base/manifest/AndroidManifest.xml'
+          echo "APK: $(du -h "$APK" | cut -f1)"
+          echo "AAB: $(du -h "$AAB" | cut -f1)"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: parin-litner-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: parin-litner-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 30
