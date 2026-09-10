@@ -1,55 +1,111 @@
 import 'package:flutter/material.dart';
+import '../../core/i18n/app_strings.dart';
 import '../../core/models/app_models.dart';
 import '../../core/models/app_settings.dart';
 import '../../core/utils/helpers.dart';
-import '../../core/i18n/app_strings.dart';
-import '../../shared/widgets/animated_glass_card.dart';
 import '../decks/deck_page.dart';
 import '../settings/settings_page.dart';
 
-class HomePage extends StatefulWidget {
-  final List<Deck> decks; final VoidCallback onChanged; final Future<void> Function() onImport; final Future<void> Function() onExport; final AppSettings settings;
+class HomePage extends StatelessWidget {
+  final List<Deck> decks;
+  final VoidCallback onChanged;
+  final Future<void> Function() onImport;
+  final Future<void> Function() onExport;
+  final AppSettings settings;
   const HomePage({super.key, required this.decks, required this.onChanged, required this.onImport, required this.onExport, required this.settings});
-  @override State<HomePage> createState() => _HomePageState();
-}
 
-class _HomePageState extends State<HomePage> {
-  String s(String k) => AppStrings.t(context, k);
-  int get total => widget.decks.fold(0, (n, d) => n + d.cards.length);
-  int get due => widget.decks.fold(0, (n, d) => n + dueCount(d));
+  String s(BuildContext c, String k) => AppStrings.t(c, k);
 
-  @override Widget build(BuildContext context) {
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final progress = widget.settings.dailyGoal <= 0 ? 0.0 : (due / widget.settings.dailyGoal).clamp(0.0, 1.0).toDouble();
+    final total = decks.fold<int>(0, (sum, d) => sum + d.cards.length);
+    final due = decks.fold<int>(0, (sum, d) => sum + dueCount(d));
+    final goal = settings.dailyGoal.clamp(1, 100);
+    final progress = (due / goal).clamp(0.0, 1.0).toDouble();
     return Scaffold(
-      appBar: AppBar(title: const Text('Parin Litner', style: TextStyle(fontWeight: FontWeight.w800)), actions: [
-        IconButton(onPressed: widget.onImport, icon: const Icon(Icons.file_open_outlined), tooltip: s('import')),
-        IconButton(onPressed: widget.onExport, icon: const Icon(Icons.save_alt_outlined), tooltip: s('export')),
-        IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsPage(settings: widget.settings, onImport: widget.onImport, onExport: widget.onExport))), icon: const Icon(Icons.tune_outlined), tooltip: s('settings')),
-      ]),
-      floatingActionButton: FloatingActionButton.extended(onPressed: _newDeck, icon: const Icon(Icons.add_rounded), label: Text(s('new_deck'))),
+      appBar: AppBar(
+        title: const Text('Parin Litner'),
+        actions: [
+          IconButton(onPressed: onImport, tooltip: s(context, 'import'), icon: const Icon(Icons.file_download_outlined)),
+          IconButton(onPressed: onExport, tooltip: s(context, 'export'), icon: const Icon(Icons.file_upload_outlined)),
+          IconButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsPage(settings: settings, onImport: onImport, onExport: onExport))),
+            tooltip: s(context, 'settings'),
+            icon: const Icon(Icons.settings_outlined),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(onPressed: () => _newDeck(context), icon: const Icon(Icons.add), label: Text(s(context, 'new_deck'))),
       body: RefreshIndicator(
-        onRefresh: () async { await Future<void>.delayed(const Duration(milliseconds: 120)); if (mounted) setState(() {}); },
-        child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
-          AnimatedGlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [Expanded(child: Text(progress >= 1 ? s('goal_done') : s('ready'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))), Icon(progress >= 1 ? Icons.emoji_events_outlined : Icons.school_outlined, color: scheme.primary, size: 30)]),
-            const SizedBox(height: 14),
-            ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: progress, minHeight: 9)),
-            const SizedBox(height: 8),
-            Text('$due / ${widget.settings.dailyGoal}   •   $total ${s('cards_count')}', style: TextStyle(color: scheme.onSurfaceVariant)),
-          ])),
-          const SizedBox(height: 14),
-          Row(children: [Expanded(child: _stat(s('cards'), total.toString(), Icons.style_outlined)), const SizedBox(width: 10), Expanded(child: _stat(s('today'), due.toString(), Icons.today_outlined))]),
-          const SizedBox(height: 20),
-          Text(s('decks'), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)), const SizedBox(height: 10),
-          if (widget.decks.isEmpty) AnimatedGlassCard(child: Center(child: Padding(padding: const EdgeInsets.all(18), child: Text(s('no_cards'))))),
-          for (final deck in List<Deck>.from(widget.decks)) Padding(padding: const EdgeInsets.only(bottom: 10), child: AnimatedGlassCard(onTap: () async { final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => DeckPage(deck: deck, settings: widget.settings, onChanged: () { if (mounted) setState(() {}); widget.onChanged(); }))); if (result == 'deleted' && mounted) { widget.decks.removeWhere((d) => d.id == deck.id); await widget.onChanged(); setState(() {}); } }, child: Row(children: [CircleAvatar(radius: 27, backgroundColor: _color(deck.colorHex, scheme.primary), child: const Icon(Icons.layers_outlined, color: Colors.white)), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(deck.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)), const SizedBox(height: 5), Text('${deck.cards.length} ${s('cards_count')}  •  ${dueCount(deck)} ${s('ready_count')}', style: TextStyle(color: scheme.onSurfaceVariant))])), const Icon(Icons.chevron_left_rounded)]))),
-        ]),
+        onRefresh: () async { onChanged(); },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+          children: [
+            _GlassPanel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Row(children: [Expanded(child: Text(due > 0 ? s(context, 'cards_ready') : s(context, 'ready'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))), Icon(due > 0 ? Icons.school_outlined : Icons.check_circle_outline, color: scheme.primary)]),
+              const SizedBox(height: 14),
+              LinearProgressIndicator(value: progress, minHeight: 9),
+              const SizedBox(height: 8),
+              Text('$due / $goal   •   $total ${s(context, 'cards_count')}', style: TextStyle(color: scheme.onSurfaceVariant)),
+            ])),
+            const SizedBox(height: 12),
+            Row(children: [Expanded(child: _Stat(title: s(context, 'cards'), value: '$total', icon: Icons.style_outlined)), const SizedBox(width: 10), Expanded(child: _Stat(title: s(context, 'today'), value: '$due', icon: Icons.today_outlined))]),
+            const SizedBox(height: 20),
+            Text(s(context, 'decks'), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            if (decks.isEmpty) _GlassPanel(child: Center(child: Text(s(context, 'no_cards')))),
+            for (final deck in List<Deck>.from(decks)) Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _GlassPanel(
+                onTap: () async {
+                  final result = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => DeckPage(deck: deck, settings: settings, onChanged: onChanged)));
+                  if (result == 'deleted') { decks.removeWhere((d) => d.id == deck.id); onChanged(); }
+                },
+                child: Row(children: [
+                  CircleAvatar(radius: 26, backgroundColor: _color(deck.colorHex, scheme.primary), child: const Icon(Icons.layers_outlined, color: Colors.white)),
+                  const SizedBox(width: 14),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    Text(deck.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text('${deck.cards.length} ${s(context, 'cards_count')}  •  ${dueCount(deck)} ${s(context, 'ready_count')}', style: TextStyle(color: scheme.onSurfaceVariant)),
+                  ])),
+                  const Icon(Icons.chevron_left),
+                ]),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _stat(String title, String value, IconData icon) => AnimatedGlassCard(child: Row(children: [Icon(icon, color: Theme.of(context).colorScheme.primary), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), Text(title, overflow: TextOverflow.ellipsis, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))]))]));
-  Color _color(String raw, Color fallback) { try { final clean = raw.replaceFirst('#',''); return Color(int.parse(clean.length == 6 ? 'FF$clean' : clean, radix: 16)); } catch (_) { return fallback; } }
-  Future<void> _newDeck() async { final c = TextEditingController(); final name = await showDialog<String>(context: context, builder: (_) => AlertDialog(title: Text(s('new_deck')), content: TextField(controller: c, autofocus: true, decoration: InputDecoration(labelText: s('new_deck_hint'))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(s('cancel'))), FilledButton(onPressed: () => Navigator.pop(context, c.text.trim()), child: Text(s('create')))])); c.dispose(); if (name == null || name.isEmpty) return; widget.decks.add(Deck(id: uid(), name: name)); if (mounted) setState(() {}); await widget.onChanged(); }
+  Color _color(String raw, Color fallback) { try { final v = raw.replaceFirst('#', '').trim(); return Color(int.parse(v.length == 6 ? 'FF$v' : v, radix: 16)); } catch (_) { return fallback; } }
+
+  Future<void> _newDeck(BuildContext context) async {
+    final c = TextEditingController();
+    final name = await showDialog<String>(context: context, builder: (dialogContext) => AlertDialog(title: Text(s(context, 'new_deck')), content: TextField(controller: c, autofocus: true, decoration: InputDecoration(labelText: s(context, 'new_deck_hint'))), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(s(context, 'cancel'))), FilledButton(onPressed: () => Navigator.pop(dialogContext, c.text.trim()), child: Text(s(context, 'build')))]));
+    c.dispose();
+    if (name == null || name.isEmpty) return;
+    decks.add(Deck(id: uid(), name: name));
+    onChanged();
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String title; final String value; final IconData icon;
+  const _Stat({required this.title, required this.value, required this.icon});
+  @override Widget build(BuildContext context) => _GlassPanel(child: Row(children: [Icon(icon, color: Theme.of(context).colorScheme.primary), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), Text(title, overflow: TextOverflow.ellipsis, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))]))]));
+}
+
+class _GlassPanel extends StatelessWidget {
+  final Widget child; final VoidCallback? onTap;
+  const _GlassPanel({required this.child, this.onTap});
+  @override Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final panel = Container(width: double.infinity, padding: const EdgeInsets.all(18), decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.white.withValues(alpha: .78), scheme.primary.withValues(alpha: .06)]), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white.withValues(alpha: .88)), boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: .08), blurRadius: 24, offset: const Offset(0, 8))]), child: child);
+    if (onTap == null) return panel;
+    return Material(color: Colors.transparent, child: InkWell(borderRadius: BorderRadius.circular(24), onTap: onTap, child: panel));
+  }
 }
