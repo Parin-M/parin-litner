@@ -30,7 +30,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Prepare Android release metadata
+      - name: Prepare Android release metadata and ephemeral signing
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -38,10 +38,23 @@ jobs:
           s=p.read_text()
           s=s.replace('android:label="parin_litner"','android:label="Parin Litner"')
           p.write_text(s)
-          print('Android package:', 'com.parin.parin_litner')
+          print('Android package: com.parin.parin_litner')
           PY
           test -f android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
           grep -q '^package com.parin.parin_litner' android/app/src/main/kotlin/com/parin/parin_litner/MainActivity.kt
+          keytool -genkeypair -v -keystore android/parin-release.jks -storepass changeit -keypass changeit -alias parinlitner -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=Parin Litner, OU=Release, O=Parin, L=Internet, ST=NA, C=US'
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android/app/build.gradle.kts')
+          s=p.read_text()
+          marker='android {\n'
+          signing='''android {\n    signingConfigs {\n        create("release") {\n            storeFile = file("../parin-release.jks")\n            storePassword = "changeit"\n            keyAlias = "parinlitner"\n            keyPassword = "changeit"\n        }\n    }\n'''
+          if marker not in s: raise SystemExit('android block not found')
+          s=s.replace(marker, signing, 1)
+          s=s.replace('signingConfig = signingConfigs.getByName("debug")','signingConfig = signingConfigs.getByName("release")')
+          p.write_text(s)
+          print('Ephemeral release signing configured for this CI run.')
+          PY
 
       - name: Install Parin Litner assets
         run: |
@@ -94,6 +107,8 @@ jobs:
           unzip -t "$AAB" >/dev/null
           unzip -l "$APK" | grep -q 'classes.dex'
           unzip -l "$AAB" | grep -q 'base/manifest/AndroidManifest.xml'
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify "$APK"
+          jarsigner -verify -strict "$AAB" >/dev/null
           echo "APK: $(du -h "$APK" | cut -f1)"
           echo "AAB: $(du -h "$AAB" | cut -f1)"
 
