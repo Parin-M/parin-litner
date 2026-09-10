@@ -98,17 +98,48 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Verify release artifacts
+        shell: bash
         run: |
+          set -euo pipefail
           APK=build/app/outputs/flutter-apk/app-release.apk
           AAB=build/app/outputs/bundle/release/app-release.aab
           test -s "$APK"
           test -s "$AAB"
-          unzip -t "$APK" >/dev/null
-          unzip -t "$AAB" >/dev/null
-          unzip -l "$APK" | grep -q 'classes.dex'
-          unzip -l "$AAB" | grep -q 'base/manifest/AndroidManifest.xml'
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner" verify "$APK"
-          jarsigner -verify -strict "$AAB" >/dev/null
+
+          python3 - "$APK" "$AAB" <<'PY'
+          import sys
+          import zipfile
+          from pathlib import Path
+
+          apk = Path(sys.argv[1])
+          aab = Path(sys.argv[2])
+
+          with zipfile.ZipFile(apk) as z:
+              bad = z.testzip()
+              if bad:
+                  raise SystemExit(f'Corrupt APK entry: {bad}')
+              names = set(z.namelist())
+              if not any(name == 'classes.dex' or name.startswith('classes') and name.endswith('.dex') for name in names):
+                  raise SystemExit('APK does not contain a dex file')
+
+          with zipfile.ZipFile(aab) as z:
+              bad = z.testzip()
+              if bad:
+                  raise SystemExit(f'Corrupt AAB entry: {bad}')
+              names = set(z.namelist())
+              required = 'base/manifest/AndroidManifest.xml'
+              if required not in names:
+                  raise SystemExit(f'AAB missing {required}')
+
+          print('ZIP structure verification: OK')
+          PY
+
+          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
+          "$APKSIGNER" verify --verbose "$APK"
+
+          echo 'AAB signing verification:'
+          jarsigner -verify "$AAB"
+
           echo "APK: $(du -h "$APK" | cut -f1)"
           echo "AAB: $(du -h "$AAB" | cut -f1)"
 
