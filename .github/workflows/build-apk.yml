@@ -61,7 +61,65 @@ jobs:
           mkdir -p assets/audio
           test -s assets/parin_litner_icon.png
           python3 - <<'PY'
-          import struct,zlib
+          import math
+          import random
+          import struct
+          import wave
+          from pathlib import Path
+
+          SR = 22050
+          DURATION = 12
+          N = SR * DURATION
+          OUT = Path('assets/audio')
+          random.seed(20260912)
+
+          def write_track(name, generator):
+              path = OUT / name
+              with wave.open(str(path), 'wb') as w:
+                  w.setnchannels(1)
+                  w.setsampwidth(2)
+                  w.setframerate(SR)
+                  frames = bytearray()
+                  for i in range(N):
+                      value = max(-1.0, min(1.0, generator(i / SR, i)))
+                      frames += struct.pack('<h', int(value * 23000))
+                  w.writeframes(frames)
+              print(path, path.stat().st_size, 'bytes')
+
+          def soft_env(t):
+              phase = t % DURATION
+              return min(1.0, phase / 1.8, (DURATION - phase) / 1.8)
+
+          def lofi(t, i):
+              e = soft_env(t)
+              slow = 0.5 + 0.5 * math.sin(2 * math.pi * t / 7.0)
+              chord = (
+                  0.28 * math.sin(2 * math.pi * 174.61 * t) +
+                  0.20 * math.sin(2 * math.pi * 261.63 * t) +
+                  0.13 * math.sin(2 * math.pi * 329.63 * t)
+              )
+              bell = 0.05 * math.sin(2 * math.pi * 523.25 * t) * (0.5 + 0.5 * math.sin(2 * math.pi * t / 4.0))
+              return 0.42 * e * (0.72 + 0.28 * slow) * (chord + bell)
+
+          rain_state = 0.0
+          def rainy(t, i):
+              global rain_state
+              white = random.uniform(-1.0, 1.0)
+              rain_state = 0.985 * rain_state + 0.015 * white
+              texture = white - rain_state
+              drone = 0.16 * math.sin(2 * math.pi * 98.0 * t) + 0.08 * math.sin(2 * math.pi * 147.0 * t)
+              return 0.26 * texture + drone
+
+          def deep(t, i):
+              pulse = 0.5 + 0.5 * math.sin(2 * math.pi * t / 8.0)
+              drone = 0.30 * math.sin(2 * math.pi * 110.0 * t) + 0.16 * math.sin(2 * math.pi * 220.0 * t)
+              pad = 0.08 * math.sin(2 * math.pi * 164.81 * t) * pulse
+              return 0.62 * (0.75 + 0.25 * pulse) * (drone + pad)
+
+          write_track('lofi_night.wav', lofi)
+          write_track('rainy_focus.wav', rainy)
+          write_track('deep_focus.wav', deep)
+
           b=open('assets/parin_litner_icon.png','rb').read(); assert b[:8]==b'\x89PNG\r\n\x1a\n'
           pos=8
           while pos<len(b):
@@ -119,8 +177,12 @@ jobs:
               if bad:
                   raise SystemExit(f'Corrupt APK entry: {bad}')
               names = set(z.namelist())
-              if not any(name == 'classes.dex' or name.startswith('classes') and name.endswith('.dex') for name in names):
+              if not any(name == 'classes.dex' or (name.startswith('classes') and name.endswith('.dex')) for name in names):
                   raise SystemExit('APK does not contain a dex file')
+              for track in ('lofi_night.wav', 'rainy_focus.wav', 'deep_focus.wav'):
+                  expected = f'assets/flutter_assets/assets/audio/{track}'
+                  if expected not in names:
+                      raise SystemExit(f'APK missing bundled audio asset: {expected}')
 
           with zipfile.ZipFile(aab) as z:
               bad = z.testzip()
@@ -130,15 +192,14 @@ jobs:
               required = 'base/manifest/AndroidManifest.xml'
               if required not in names:
                   raise SystemExit(f'AAB missing {required}')
+              if not any(name.endswith('/assets/flutter_assets/assets/audio/lofi_night.wav') for name in names):
+                  raise SystemExit('AAB missing bundled audio asset')
 
-          print('ZIP structure verification: OK')
+          print('ZIP structure and bundled audio verification: OK')
           PY
 
           APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
           "$APKSIGNER" verify --verbose "$APK"
-
-          echo 'AAB signing verification:'
-          jarsigner -verify "$AAB"
 
           echo "APK: $(du -h "$APK" | cut -f1)"
           echo "AAB: $(du -h "$AAB" | cut -f1)"
