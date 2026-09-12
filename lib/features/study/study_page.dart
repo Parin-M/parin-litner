@@ -26,7 +26,6 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
   bool revealed = false;
   bool musicPlaying = false;
   bool finished = false;
-
   String s(String key) => AppStrings.t(context, key);
 
   @override
@@ -34,32 +33,14 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
     super.initState();
     cards = List<FlashCard>.from(widget.studyCards ?? widget.deck.cards.where((c) => !c.dueAt.isAfter(DateTime.now())))..shuffle();
     flip = AnimationController(vsync: this, duration: Duration(milliseconds: widget.settings.animations ? 400 : 1));
-    if (widget.settings.showTimer) {
-      timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted && !finished) setState(() => seconds++);
-      });
-    }
+    if (widget.settings.showTimer) timer = Timer.periodic(const Duration(seconds: 1), (_) { if (mounted && !finished) setState(() => seconds++); });
     if (cards.isNotEmpty && widget.settings.musicEnabled) _playMusic();
-    if (cards.isNotEmpty && widget.settings.autoReveal) {
-      Future.delayed(const Duration(milliseconds: 500), () { if (mounted) _toggleReveal(); });
-    }
+    if (cards.isNotEmpty && widget.settings.autoReveal) Future.delayed(const Duration(milliseconds: 500), () { if (mounted) _toggleReveal(); });
   }
 
-  Future<void> _playMusic() async {
-    try { await MusicService.instance.play(widget.settings.musicTrack, volume: widget.settings.musicVolume); if (mounted) setState(() => musicPlaying = true); } catch (_) {}
-  }
-
-  void _buzz({bool heavy = false}) {
-    if (!widget.settings.haptics) return;
-    if (heavy) { HapticFeedback.heavyImpact(); } else { HapticFeedback.selectionClick(); }
-  }
-
-  void _toggleReveal() {
-    if (finished || cards.isEmpty) return;
-    setState(() => revealed = !revealed);
-    if (revealed) { flip.forward(); } else { flip.reverse(); }
-    _buzz();
-  }
+  Future<void> _playMusic() async { try { await MusicService.instance.play(widget.settings.musicTrack, volume: widget.settings.musicVolume); if (mounted) setState(() => musicPlaying = true); } catch (_) {} }
+  void _buzz({bool heavy = false}) { if (!widget.settings.haptics) return; if (heavy) { HapticFeedback.heavyImpact(); } else { HapticFeedback.selectionClick(); } }
+  void _toggleReveal() { if (finished || cards.isEmpty) return; setState(() => revealed = !revealed); if (revealed) { flip.forward(); } else { flip.reverse(); } _buzz(); }
 
   void _rate(int rating) {
     if (finished || cards.isEmpty || !revealed) return;
@@ -74,6 +55,7 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
     widget.onChanged();
     widget.settings.recordReview();
     _buzz();
+    if (widget.settings.showXp && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('+12 XP'), duration: Duration(milliseconds: 650)));
     if (index == cards.length - 1) { finished = true; _buzz(heavy: true); _finish(); return; }
     setState(() { index++; revealed = false; });
     flip.reset();
@@ -93,6 +75,12 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
     if (mounted) Navigator.pop(context);
   }
 
+  Future<void> _back() async {
+    if (finished || !widget.settings.confirmExit) { if (mounted) Navigator.pop(context); return; }
+    final leave = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(title: Text(s('confirm_exit')), content: Text(s('confirm_exit_sub')), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(s('cancel'))), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(s('close')))]));
+    if (leave == true && mounted) Navigator.pop(context);
+  }
+
   String _time() => '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
 
   @override
@@ -103,8 +91,8 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
     if (cards.isEmpty) return Scaffold(appBar: AppBar(title: Text(s('study'))), body: Center(child: Padding(padding: const EdgeInsets.all(28), child: Text(s('no_due'), textAlign: TextAlign.center))));
     final card = cards[index];
     final progress = ((index + (revealed ? .9 : .1)) / cards.length).clamp(0.0, 1.0).toDouble();
-    return Scaffold(
-      appBar: AppBar(title: Text('${index + 1} / ${cards.length}'), actions: [if (widget.settings.showTimer) Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Center(child: Text(_time(), style: const TextStyle(fontWeight: FontWeight.w700)))), if (widget.settings.musicEnabled) IconButton(onPressed: () async { if (musicPlaying) { await MusicService.instance.pause(); if (mounted) setState(() => musicPlaying = false); } else { await _playMusic(); } }, icon: Icon(musicPlaying ? Icons.music_note : Icons.music_off), tooltip: s('music_btn'))]),
+    return PopScope(canPop: !widget.settings.confirmExit || finished, onPopInvokedWithResult: (didPop, result) { if (!didPop && widget.settings.confirmExit && !finished) _back(); }, child: Scaffold(
+      appBar: AppBar(leading: IconButton(onPressed: _back, icon: const Icon(Icons.arrow_back)), title: Text('${index + 1} / ${cards.length}'), actions: [if (widget.settings.showTimer) Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Center(child: Text(_time(), style: const TextStyle(fontWeight: FontWeight.w700)))), if (widget.settings.musicEnabled) IconButton(onPressed: () async { if (musicPlaying) { await MusicService.instance.pause(); if (mounted) setState(() => musicPlaying = false); } else { await _playMusic(); } }, icon: Icon(musicPlaying ? Icons.music_note : Icons.music_off), tooltip: s('music_btn'))]),
       body: SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 18), child: Column(children: [
         if (widget.settings.showProgress) ...[LinearProgressIndicator(value: progress, minHeight: 7), const SizedBox(height: 14)],
         Expanded(child: GestureDetector(onTap: _toggleReveal, onHorizontalDragEnd: _swipe, child: AnimatedBuilder(animation: flip, builder: (context, child) { final angle = flip.value * pi; final front = angle <= pi / 2; final face = _CardFace(text: front ? card.front : card.back, image: front ? card.frontImage : card.backImage, label: front ? s('tap') : s('answer')); final visible = front ? face : Transform(alignment: Alignment.center, transform: Matrix4.rotationY(pi), child: face); return Transform(alignment: Alignment.center, transform: Matrix4.identity()..setEntry(3,2,.0012)..rotateY(angle), child: visible); }))),
@@ -112,7 +100,7 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
         if (revealed) Row(children: [Expanded(child: _Rate(label:s('again'), icon:Icons.refresh_outlined, onTap:()=>_rate(0))), const SizedBox(width:6), Expanded(child: _Rate(label:s('hard'), icon:Icons.trending_down, onTap:()=>_rate(1))), const SizedBox(width:6), Expanded(child: _Rate(label:s('good'), icon:Icons.check, onTap:()=>_rate(2))), const SizedBox(width:6), Expanded(child: _Rate(label:s('easy'), icon:Icons.bolt, onTap:()=>_rate(3)))]),
         Padding(padding: const EdgeInsets.only(top:6), child: Text(revealed ? s('swipe') : s('tap'), textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))),
       ]))),
-    );
+    ));
   }
 }
 
