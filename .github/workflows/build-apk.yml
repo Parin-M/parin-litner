@@ -65,6 +65,7 @@ jobs:
           import random
           import struct
           import wave
+          import zlib
           from pathlib import Path
 
           SR = 22050
