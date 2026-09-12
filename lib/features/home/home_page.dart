@@ -5,6 +5,7 @@ import '../../core/models/app_settings.dart';
 import '../../core/utils/helpers.dart';
 import '../decks/deck_page.dart';
 import '../focus/focus_page.dart';
+import '../power/power_center_page.dart';
 import '../settings/settings_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -30,11 +31,7 @@ class HomePage extends StatelessWidget {
         actions: [
           IconButton(onPressed: onImport, tooltip: s(context, 'import'), icon: const Icon(Icons.file_download_outlined)),
           IconButton(onPressed: onExport, tooltip: s(context, 'export'), icon: const Icon(Icons.file_upload_outlined)),
-          IconButton(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsPage(settings: settings, onImport: onImport, onExport: onExport))),
-            tooltip: s(context, 'settings'),
-            icon: const Icon(Icons.settings_outlined),
-          ),
+          IconButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsPage(settings: settings, onImport: onImport, onExport: onExport))), tooltip: s(context, 'settings'), icon: const Icon(Icons.settings_outlined)),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(onPressed: () => _newDeck(context), icon: const Icon(Icons.add), label: Text(s(context, 'new_deck'))),
@@ -54,41 +51,28 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 12),
             Row(children: [Expanded(child: _Stat(title: s(context, 'cards'), value: '$total', icon: Icons.style_outlined)), const SizedBox(width: 10), Expanded(child: _Stat(title: s(context, 'today'), value: '$due', icon: Icons.today_outlined))]),
             const SizedBox(height: 12),
-            _GlassPanel(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FocusPage(settings: settings))),
-              child: Row(children: [
-                CircleAvatar(radius: 25, backgroundColor: scheme.primaryContainer, child: Icon(Icons.self_improvement_outlined, color: scheme.onPrimaryContainer)),
-                const SizedBox(width: 14),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(s(context, 'focus_mode'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 3),
-                  Text(s(context, 'focus_sub'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: scheme.onSurfaceVariant)),
-                ])),
-                const Icon(Icons.chevron_right),
-              ]),
-            ),
+            _GlassPanel(onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FocusPage(settings: settings))), child: Row(children: [
+              CircleAvatar(radius: 25, backgroundColor: scheme.primaryContainer, child: Icon(Icons.self_improvement_outlined, color: scheme.onPrimaryContainer)),
+              const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(s(context, 'focus_mode'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)), const SizedBox(height: 3), Text(s(context, 'focus_sub'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: scheme.onSurfaceVariant))])), const Icon(Icons.chevron_right),
+            ])),
+            const SizedBox(height: 12),
+            _GlassPanel(onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PowerCenterPage(decks: decks, settings: settings, onChanged: onChanged))), child: Row(children: [
+              CircleAvatar(radius: 25, backgroundColor: scheme.secondaryContainer, child: Icon(Icons.auto_awesome, color: scheme.onSecondaryContainer)),
+              const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [const Text('Power Center', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)), const SizedBox(height: 3), Text('Smart Mix • XP • Streaks • Rewards', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: scheme.onSurfaceVariant))])), const Icon(Icons.chevron_right),
+            ])),
             const SizedBox(height: 20),
             Text(s(context, 'decks'), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
             const SizedBox(height: 10),
             if (decks.isEmpty) _GlassPanel(child: Center(child: Text(s(context, 'no_cards')))),
             for (final deck in List<Deck>.from(decks)) Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _GlassPanel(
-                onTap: () async {
-                  final result = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => DeckPage(deck: deck, settings: settings, onChanged: onChanged)));
-                  if (result == 'deleted') { decks.removeWhere((d) => d.id == deck.id); onChanged(); }
-                },
-                child: Row(children: [
-                  CircleAvatar(radius: 26, backgroundColor: _color(deck.colorHex, scheme.primary), child: const Icon(Icons.layers_outlined, color: Colors.white)),
-                  const SizedBox(width: 14),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Text(deck.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Text('${deck.cards.length} ${s(context, 'cards_count')}  •  ${dueCount(deck)} ${s(context, 'ready_count')}', style: TextStyle(color: scheme.onSurfaceVariant)),
-                  ])),
-                  const Icon(Icons.chevron_left),
-                ]),
-              ),
+              child: _GlassPanel(onTap: () async {
+                final result = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => DeckPage(deck: deck, settings: settings, onChanged: onChanged)));
+                if (result == 'deleted') { decks.removeWhere((d) => d.id == deck.id); onChanged(); }
+              }, child: Row(children: [
+                CircleAvatar(radius: 26, backgroundColor: _color(deck.colorHex, scheme.primary), child: const Icon(Icons.layers_outlined, color: Colors.white)),
+                const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(deck.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text('${deck.cards.length} ${s(context, 'cards_count')}  •  ${dueCount(deck)} ${s(context, 'ready_count')}', style: TextStyle(color: scheme.onSurfaceVariant))])), const Icon(Icons.chevron_left),
+              ])),
             ),
           ],
         ),
