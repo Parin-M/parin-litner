@@ -4,6 +4,7 @@ import '../../core/models/app_models.dart';
 import '../../core/models/app_settings.dart';
 import '../../core/utils/helpers.dart';
 import '../decks/deck_page.dart';
+import '../focus/focus_page.dart';
 import '../settings/settings_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -52,6 +53,20 @@ class HomePage extends StatelessWidget {
             ])),
             const SizedBox(height: 12),
             Row(children: [Expanded(child: _Stat(title: s(context, 'cards'), value: '$total', icon: Icons.style_outlined)), const SizedBox(width: 10), Expanded(child: _Stat(title: s(context, 'today'), value: '$due', icon: Icons.today_outlined))]),
+            const SizedBox(height: 12),
+            _GlassPanel(
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FocusPage(settings: settings))),
+              child: Row(children: [
+                CircleAvatar(radius: 25, backgroundColor: scheme.primaryContainer, child: Icon(Icons.self_improvement_outlined, color: scheme.onPrimaryContainer)),
+                const SizedBox(width: 14),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(s(context, 'focus_mode'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 3),
+                  Text(s(context, 'focus_sub'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: scheme.onSurfaceVariant)),
+                ])),
+                const Icon(Icons.chevron_right),
+              ]),
+            ),
             const SizedBox(height: 20),
             Text(s(context, 'decks'), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
             const SizedBox(height: 10),
