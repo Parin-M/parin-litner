@@ -34,6 +34,8 @@ class AppSettings extends ChangeNotifier {
     AppLanguage('tr', 'Turkish', 'Türkçe'),
   ];
 
+  static const musicTrackIds = <String>{'lofi_night', 'rainy_focus', 'deep_focus'};
+
   int themeIndex = 0;
   String languageCode = 'fa';
   bool animations = true, haptics = true, autoReveal = false, showProgress = true, showTimer = true, glass = true;
@@ -64,7 +66,7 @@ class AppSettings extends ChangeNotifier {
     dailyGoal = p.getInt('daily_goal') ?? 20;
     musicEnabled = p.getBool('music_enabled') ?? false;
     musicTrack = p.getString('music_track') ?? 'lofi_night';
-    if (!MusicTrackIds.contains(musicTrack)) musicTrack = 'lofi_night';
+    if (!musicTrackIds.contains(musicTrack)) musicTrack = 'lofi_night';
     musicVolume = p.getDouble('music_volume') ?? .35;
     notifyListeners();
   }
@@ -112,7 +114,7 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> setMusicTrack(String v) async {
-    if (!MusicTrackIds.contains(v)) return;
+    if (!musicTrackIds.contains(v)) return;
     musicTrack = v;
     await (await SharedPreferences.getInstance()).setString('music_track', v);
     notifyListeners();
@@ -124,5 +126,3 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 }
-
-const MusicTrackIds = <String>{'lofi_night', 'rainy_focus', 'deep_focus'};
