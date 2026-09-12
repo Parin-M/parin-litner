@@ -23,6 +23,7 @@ class AppSettings extends ChangeNotifier {
   int themeIndex = 0;
   String languageCode = 'fa';
   bool animations = true, haptics = true, autoReveal = false, showProgress = true, showTimer = true, glass = true;
+  bool showXp = true, confirmExit = true, compactSettings = false;
   double glassOpacity = .62;
   int dailyGoal = 20;
   bool musicEnabled = false;
@@ -64,6 +65,7 @@ class AppSettings extends ChangeNotifier {
     if (!languages.any((x) => x.code == languageCode)) languageCode = 'fa';
     animations = p.getBool('animations') ?? true; haptics = p.getBool('haptics') ?? true; autoReveal = p.getBool('auto_reveal') ?? false;
     showProgress = p.getBool('show_progress') ?? true; showTimer = p.getBool('show_timer') ?? true; glass = p.getBool('glass') ?? true;
+    showXp = p.getBool('show_xp') ?? true; confirmExit = p.getBool('confirm_exit') ?? true; compactSettings = p.getBool('compact_settings') ?? false;
     glassOpacity = p.getDouble('glass_opacity') ?? .62; dailyGoal = p.getInt('daily_goal') ?? 20; musicEnabled = p.getBool('music_enabled') ?? false;
     musicTrack = p.getString('music_track') ?? 'lofi_night'; if (!musicTrackIds.contains(musicTrack)) musicTrack = 'lofi_night'; musicVolume = p.getDouble('music_volume') ?? .35;
     xp = maxInt(0, p.getInt('xp') ?? 0); streak = maxInt(0, p.getInt('streak') ?? 0); lastStudyDay = p.getString('last_study_day'); lastRewardDay = p.getString('last_reward_day');
@@ -75,7 +77,18 @@ class AppSettings extends ChangeNotifier {
   Future<void> setTheme(int value) async { themeIndex = value.clamp(0, 19).toInt(); await (await SharedPreferences.getInstance()).setInt('theme_index', themeIndex); notifyListeners(); }
 
   Future<void> setBool(String key, bool value) async {
-    switch (key) { case 'animations': animations = value; break; case 'haptics': haptics = value; break; case 'auto_reveal': autoReveal = value; break; case 'show_progress': showProgress = value; break; case 'show_timer': showTimer = value; break; case 'glass': glass = value; break; case 'music_enabled': musicEnabled = value; break; }
+    switch (key) {
+      case 'animations': animations = value; break;
+      case 'haptics': haptics = value; break;
+      case 'auto_reveal': autoReveal = value; break;
+      case 'show_progress': showProgress = value; break;
+      case 'show_timer': showTimer = value; break;
+      case 'glass': glass = value; break;
+      case 'music_enabled': musicEnabled = value; break;
+      case 'show_xp': showXp = value; break;
+      case 'confirm_exit': confirmExit = value; break;
+      case 'compact_settings': compactSettings = value; break;
+    }
     await (await SharedPreferences.getInstance()).setBool(key, value); notifyListeners();
   }
   Future<void> setGlassOpacity(double v) async { glassOpacity = v.clamp(.30, .90).toDouble(); await (await SharedPreferences.getInstance()).setDouble('glass_opacity', glassOpacity); notifyListeners(); }
@@ -94,9 +107,7 @@ class AppSettings extends ChangeNotifier {
     final p = await SharedPreferences.getInstance();
     await p.setInt('xp', xp); await p.setInt('streak', streak); await p.setString('last_study_day', key); await p.setStringList('review_days', reviewDays);
     notifyListeners();
-    if (level > previousLevel) {
-      // The UI reads the new level immediately through ChangeNotifier.
-    }
+    if (level > previousLevel) { }
   }
 
   Future<bool> claimDailyReward() async {
