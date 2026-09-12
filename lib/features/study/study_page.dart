@@ -72,6 +72,7 @@ class _StudyPageState extends State<StudyPage> with SingleTickerProviderStateMix
     else if (rating == 2) { card.boxIndex = min(lastBox, max(0, card.boxIndex + 1)); card.dueAt = now.add(Duration(days: [1, 2, 4, 7, 14, 30][min(card.boxIndex, 5)])); }
     else { card.boxIndex = min(lastBox, max(0, card.boxIndex + 2)); card.dueAt = now.add(Duration(days: [2, 4, 7, 14, 30, 60][min(card.boxIndex, 5)])); }
     widget.onChanged();
+    widget.settings.recordReview();
     _buzz();
     if (index == cards.length - 1) { finished = true; _buzz(heavy: true); _finish(); return; }
     setState(() { index++; revealed = false; });
