@@ -20,6 +20,8 @@ class AppSettings extends ChangeNotifier {
   ];
 
   static const musicTrackIds = <String>{'lofi_night', 'rainy_focus', 'deep_focus'};
+  static const themeCount = 50;
+
   int themeIndex = 0;
   String languageCode = 'fa';
   bool animations = true, haptics = true, autoReveal = false, showProgress = true, showTimer = true, glass = true;
@@ -60,21 +62,44 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
-    themeIndex = (p.getInt('theme_index') ?? 0).clamp(0, 19).toInt();
+    themeIndex = (p.getInt('theme_index') ?? 0).clamp(0, themeCount - 1).toInt();
     languageCode = p.getString('language_code') ?? 'fa';
     if (!languages.any((x) => x.code == languageCode)) languageCode = 'fa';
-    animations = p.getBool('animations') ?? true; haptics = p.getBool('haptics') ?? true; autoReveal = p.getBool('auto_reveal') ?? false;
-    showProgress = p.getBool('show_progress') ?? true; showTimer = p.getBool('show_timer') ?? true; glass = p.getBool('glass') ?? true;
-    showXp = p.getBool('show_xp') ?? true; confirmExit = p.getBool('confirm_exit') ?? true; compactSettings = p.getBool('compact_settings') ?? false;
-    glassOpacity = p.getDouble('glass_opacity') ?? .62; dailyGoal = p.getInt('daily_goal') ?? 20; musicEnabled = p.getBool('music_enabled') ?? false;
-    musicTrack = p.getString('music_track') ?? 'lofi_night'; if (!musicTrackIds.contains(musicTrack)) musicTrack = 'lofi_night'; musicVolume = p.getDouble('music_volume') ?? .35;
-    xp = maxInt(0, p.getInt('xp') ?? 0); streak = maxInt(0, p.getInt('streak') ?? 0); lastStudyDay = p.getString('last_study_day'); lastRewardDay = p.getString('last_reward_day');
+    animations = p.getBool('animations') ?? true;
+    haptics = p.getBool('haptics') ?? true;
+    autoReveal = p.getBool('auto_reveal') ?? false;
+    showProgress = p.getBool('show_progress') ?? true;
+    showTimer = p.getBool('show_timer') ?? true;
+    glass = p.getBool('glass') ?? true;
+    showXp = p.getBool('show_xp') ?? true;
+    confirmExit = p.getBool('confirm_exit') ?? true;
+    compactSettings = p.getBool('compact_settings') ?? false;
+    glassOpacity = p.getDouble('glass_opacity') ?? .62;
+    dailyGoal = p.getInt('daily_goal') ?? 20;
+    musicEnabled = p.getBool('music_enabled') ?? false;
+    musicTrack = p.getString('music_track') ?? 'lofi_night';
+    if (!musicTrackIds.contains(musicTrack)) musicTrack = 'lofi_night';
+    musicVolume = p.getDouble('music_volume') ?? .35;
+    xp = maxInt(0, p.getInt('xp') ?? 0);
+    streak = maxInt(0, p.getInt('streak') ?? 0);
+    lastStudyDay = p.getString('last_study_day');
+    lastRewardDay = p.getString('last_reward_day');
     reviewDays = p.getStringList('review_days') ?? <String>[];
     notifyListeners();
   }
 
-  Future<void> setLanguage(String value) async { if (!languages.any((x) => x.code == value)) return; languageCode = value; await (await SharedPreferences.getInstance()).setString('language_code', value); notifyListeners(); }
-  Future<void> setTheme(int value) async { themeIndex = value.clamp(0, 19).toInt(); await (await SharedPreferences.getInstance()).setInt('theme_index', themeIndex); notifyListeners(); }
+  Future<void> setLanguage(String value) async {
+    if (!languages.any((x) => x.code == value)) return;
+    languageCode = value;
+    await (await SharedPreferences.getInstance()).setString('language_code', value);
+    notifyListeners();
+  }
+
+  Future<void> setTheme(int value) async {
+    themeIndex = value.clamp(0, themeCount - 1).toInt();
+    await (await SharedPreferences.getInstance()).setInt('theme_index', themeIndex);
+    notifyListeners();
+  }
 
   Future<void> setBool(String key, bool value) async {
     switch (key) {
@@ -89,31 +114,68 @@ class AppSettings extends ChangeNotifier {
       case 'confirm_exit': confirmExit = value; break;
       case 'compact_settings': compactSettings = value; break;
     }
-    await (await SharedPreferences.getInstance()).setBool(key, value); notifyListeners();
+    await (await SharedPreferences.getInstance()).setBool(key, value);
+    notifyListeners();
   }
-  Future<void> setGlassOpacity(double v) async { glassOpacity = v.clamp(.30, .90).toDouble(); await (await SharedPreferences.getInstance()).setDouble('glass_opacity', glassOpacity); notifyListeners(); }
-  Future<void> setDailyGoal(int v) async { dailyGoal = v.clamp(5, 100).toInt(); await (await SharedPreferences.getInstance()).setInt('daily_goal', dailyGoal); notifyListeners(); }
-  Future<void> setMusicTrack(String v) async { if (!musicTrackIds.contains(v)) return; musicTrack = v; await (await SharedPreferences.getInstance()).setString('music_track', v); notifyListeners(); }
-  Future<void> setMusicVolume(double v) async { musicVolume = v.clamp(0, 1).toDouble(); await (await SharedPreferences.getInstance()).setDouble('music_volume', musicVolume); notifyListeners(); }
+
+  Future<void> setGlassOpacity(double v) async {
+    glassOpacity = v.clamp(.30, .90).toDouble();
+    await (await SharedPreferences.getInstance()).setDouble('glass_opacity', glassOpacity);
+    notifyListeners();
+  }
+
+  Future<void> setDailyGoal(int v) async {
+    dailyGoal = v.clamp(5, 100).toInt();
+    await (await SharedPreferences.getInstance()).setInt('daily_goal', dailyGoal);
+    notifyListeners();
+  }
+
+  Future<void> setMusicTrack(String v) async {
+    if (!musicTrackIds.contains(v)) return;
+    musicTrack = v;
+    await (await SharedPreferences.getInstance()).setString('music_track', v);
+    notifyListeners();
+  }
+
+  Future<void> setMusicVolume(double v) async {
+    musicVolume = v.clamp(0, 1).toDouble();
+    await (await SharedPreferences.getInstance()).setDouble('music_volume', musicVolume);
+    notifyListeners();
+  }
 
   Future<void> recordReview() async {
-    final now = DateTime.now(); final key = _dayKey(now); final yesterday = _dayKey(now.subtract(const Duration(days: 1)));
-    final previousLevel = level;
+    final now = DateTime.now();
+    final key = _dayKey(now);
+    final yesterday = _dayKey(now.subtract(const Duration(days: 1)));
     xp += 12;
-    if (lastStudyDay == key) { } else if (lastStudyDay == yesterday) { streak += 1; } else { streak = 1; }
+    if (lastStudyDay == key) {
+      // Same-day reviews do not extend the streak twice.
+    } else if (lastStudyDay == yesterday) {
+      streak += 1;
+    } else {
+      streak = 1;
+    }
     lastStudyDay = key;
     reviewDays = [...reviewDays, key];
     if (reviewDays.length > 300) reviewDays = reviewDays.sublist(reviewDays.length - 300);
     final p = await SharedPreferences.getInstance();
-    await p.setInt('xp', xp); await p.setInt('streak', streak); await p.setString('last_study_day', key); await p.setStringList('review_days', reviewDays);
+    await p.setInt('xp', xp);
+    await p.setInt('streak', streak);
+    await p.setString('last_study_day', key);
+    await p.setStringList('review_days', reviewDays);
     notifyListeners();
-    if (level > previousLevel) { }
   }
 
   Future<bool> claimDailyReward() async {
     if (!dailyRewardAvailable) return false;
-    final today = _dayKey(DateTime.now()); lastRewardDay = today; xp += 50 + minInt(streak * 5, 100);
-    final p = await SharedPreferences.getInstance(); await p.setString('last_reward_day', today); await p.setInt('xp', xp); notifyListeners(); return true;
+    final today = _dayKey(DateTime.now());
+    lastRewardDay = today;
+    xp += 50 + minInt(streak * 5, 100);
+    final p = await SharedPreferences.getInstance();
+    await p.setString('last_reward_day', today);
+    await p.setInt('xp', xp);
+    notifyListeners();
+    return true;
   }
 }
 
