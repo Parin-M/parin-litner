@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/i18n/app_strings.dart';
+import '../../core/models/app_models.dart';
 import '../../core/models/app_settings.dart';
 import '../../core/services/music_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -11,7 +12,7 @@ class SettingsPage extends StatefulWidget {
   final AppSettings settings;
   final Future<void> Function() onImport;
   final Future<void> Function() onExport;
-  final List<dynamic>? decks;
+  final List<Deck>? decks;
 
   const SettingsPage({super.key, required this.settings, required this.onImport, required this.onExport, this.decks});
 
@@ -99,7 +100,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _openAchievements() async {
-    final decks = (widget.decks ?? <dynamic>[]).cast();
+    final decks = widget.decks ?? <Deck>[];
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AchievementsPage(decks: decks, settings: widget.settings)));
   }
 
