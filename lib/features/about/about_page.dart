@@ -20,7 +20,7 @@ class AboutPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('About')),
+      appBar: AppBar(title: const Text('About / درباره')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 36),
         children: [
@@ -47,10 +47,10 @@ class AboutPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'This software was created by Parin Mashalchian.\n\nChatGPT also helped with its creation, development, and refinement.',
+                    'این نرم‌افزار توسط Parin Mashalchian ساخته شده است.\n\nChatGPT نیز در ساخت، توسعه و بهبود آن کمک کرده است.\n\nThis software was created by Parin Mashalchian.\n\nChatGPT also helped with its creation, development, and refinement.',
                     style: TextStyle(
                       fontSize: 16,
-                      height: 1.6,
+                      height: 1.65,
                       color: scheme.onSurfaceVariant,
                     ),
                     textAlign: TextAlign.center,
@@ -79,9 +79,10 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'Made with love on planet Earth. 🌍❤️',
+              'این نرم‌افزار با عشق در کره زمین ساخته شده است. 🌍❤️\n\nMade with love on planet Earth. 🌍❤️',
               style: TextStyle(
                 fontSize: 15,
+                height: 1.6,
                 fontWeight: FontWeight.w800,
                 color: scheme.onSurfaceVariant,
               ),
