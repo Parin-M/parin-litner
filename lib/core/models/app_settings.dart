@@ -12,13 +12,25 @@ class AppLanguage {
 class AppSettings extends ChangeNotifier {
   static const languages = <AppLanguage>[
     AppLanguage('fa', 'Persian', 'فارسی', rtl: true),
-    AppLanguage('en', 'English', 'English'), AppLanguage('de', 'German', 'Deutsch'),
-    AppLanguage('de-CH', 'Swiss German', 'Schweizerdeutsch'), AppLanguage('de-AT', 'Austrian German', 'Österreichisches Deutsch'),
-    AppLanguage('nl', 'Dutch', 'Nederlands'), AppLanguage('es', 'Spanish', 'Español'), AppLanguage('pt', 'Portuguese', 'Português'),
-    AppLanguage('fr', 'French', 'Français'), AppLanguage('da', 'Danish', 'Dansk'), AppLanguage('no', 'Norwegian', 'Norsk'),
-    AppLanguage('fi', 'Finnish', 'Suomi'), AppLanguage('sv', 'Swedish', 'Svenska'), AppLanguage('el', 'Greek', 'Ελληνικά'),
-    AppLanguage('ar', 'Arabic', 'العربية', rtl: true), AppLanguage('he', 'Hebrew', 'עברית', rtl: true),
-    AppLanguage('ja', 'Japanese', '日本語'), AppLanguage('ko', 'Korean', '한국어'), AppLanguage('it', 'Italian', 'Italiano'),
+    AppLanguage('en', 'English', 'English'),
+    AppLanguage('de', 'German', 'Deutsch'),
+    AppLanguage('de-CH', 'Swiss German', 'Deutsch (Schweiz)'),
+    AppLanguage('de-AT', 'Austrian German', 'Deutsch (Österreich)'),
+    AppLanguage('nl', 'Dutch', 'Nederlands'),
+    AppLanguage('es', 'Spanish', 'Español'),
+    AppLanguage('pt', 'Portuguese', 'Português'),
+    AppLanguage('fr', 'French', 'Français'),
+    AppLanguage('da', 'Danish', 'Dansk'),
+    AppLanguage('no', 'Norwegian', 'Norsk'),
+    AppLanguage('fi', 'Finnish', 'Suomi'),
+    AppLanguage('sv', 'Swedish', 'Svenska'),
+    AppLanguage('is', 'Icelandic', 'Íslenska'),
+    AppLanguage('el', 'Greek', 'Ελληνικά'),
+    AppLanguage('ar', 'Arabic', 'العربية', rtl: true),
+    AppLanguage('he', 'Hebrew', 'עברית', rtl: true),
+    AppLanguage('ja', 'Japanese', '日本語'),
+    AppLanguage('ko', 'Korean', '한국어'),
+    AppLanguage('it', 'Italian', 'Italiano'),
     AppLanguage('tr', 'Turkish', 'Türkçe'),
   ];
 
@@ -42,10 +54,18 @@ class AppSettings extends ChangeNotifier {
     themeIndex = (p.getInt('theme_index') ?? 0).clamp(0, 19).toInt();
     languageCode = p.getString('language_code') ?? 'fa';
     if (!languages.any((x) => x.code == languageCode)) languageCode = 'fa';
-    animations = p.getBool('animations') ?? true; haptics = p.getBool('haptics') ?? true;
-    autoReveal = p.getBool('auto_reveal') ?? false; showProgress = p.getBool('show_progress') ?? true; showTimer = p.getBool('show_timer') ?? true;
-    glass = p.getBool('glass') ?? true; glassOpacity = p.getDouble('glass_opacity') ?? .62; dailyGoal = p.getInt('daily_goal') ?? 20;
-    musicEnabled = p.getBool('music_enabled') ?? false; musicTrack = p.getString('music_track') ?? 'lofi_night'; musicVolume = p.getDouble('music_volume') ?? .35;
+    animations = p.getBool('animations') ?? true;
+    haptics = p.getBool('haptics') ?? true;
+    autoReveal = p.getBool('auto_reveal') ?? false;
+    showProgress = p.getBool('show_progress') ?? true;
+    showTimer = p.getBool('show_timer') ?? true;
+    glass = p.getBool('glass') ?? true;
+    glassOpacity = p.getDouble('glass_opacity') ?? .62;
+    dailyGoal = p.getInt('daily_goal') ?? 20;
+    musicEnabled = p.getBool('music_enabled') ?? false;
+    musicTrack = p.getString('music_track') ?? 'lofi_night';
+    if (!MusicTrackIds.contains(musicTrack)) musicTrack = 'lofi_night';
+    musicVolume = p.getDouble('music_volume') ?? .35;
     notifyListeners();
   }
 
@@ -66,13 +86,43 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setBool(String key, bool value) async {
     switch (key) {
-      case 'animations': animations = value; break; case 'haptics': haptics = value; break; case 'auto_reveal': autoReveal = value; break;
-      case 'show_progress': showProgress = value; break; case 'show_timer': showTimer = value; break; case 'glass': glass = value; break; case 'music_enabled': musicEnabled = value; break;
+      case 'animations': animations = value; break;
+      case 'haptics': haptics = value; break;
+      case 'auto_reveal': autoReveal = value; break;
+      case 'show_progress': showProgress = value; break;
+      case 'show_timer': showTimer = value; break;
+      case 'glass': glass = value; break;
+      case 'music_enabled': musicEnabled = value; break;
     }
-    final p = await SharedPreferences.getInstance(); await p.setBool(key, value); notifyListeners();
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(key, value);
+    notifyListeners();
   }
-  Future<void> setGlassOpacity(double v) async { glassOpacity = v.clamp(.30, .90).toDouble(); await (await SharedPreferences.getInstance()).setDouble('glass_opacity', glassOpacity); notifyListeners(); }
-  Future<void> setDailyGoal(int v) async { dailyGoal = v.clamp(5, 100).toInt(); await (await SharedPreferences.getInstance()).setInt('daily_goal', dailyGoal); notifyListeners(); }
-  Future<void> setMusicTrack(String v) async { musicTrack = v; await (await SharedPreferences.getInstance()).setString('music_track', v); notifyListeners(); }
-  Future<void> setMusicVolume(double v) async { musicVolume = v.clamp(0, 1).toDouble(); await (await SharedPreferences.getInstance()).setDouble('music_volume', musicVolume); notifyListeners(); }
+
+  Future<void> setGlassOpacity(double v) async {
+    glassOpacity = v.clamp(.30, .90).toDouble();
+    await (await SharedPreferences.getInstance()).setDouble('glass_opacity', glassOpacity);
+    notifyListeners();
+  }
+
+  Future<void> setDailyGoal(int v) async {
+    dailyGoal = v.clamp(5, 100).toInt();
+    await (await SharedPreferences.getInstance()).setInt('daily_goal', dailyGoal);
+    notifyListeners();
+  }
+
+  Future<void> setMusicTrack(String v) async {
+    if (!MusicTrackIds.contains(v)) return;
+    musicTrack = v;
+    await (await SharedPreferences.getInstance()).setString('music_track', v);
+    notifyListeners();
+  }
+
+  Future<void> setMusicVolume(double v) async {
+    musicVolume = v.clamp(0, 1).toDouble();
+    await (await SharedPreferences.getInstance()).setDouble('music_volume', musicVolume);
+    notifyListeners();
+  }
 }
+
+const MusicTrackIds = <String>{'lofi_night', 'rainy_focus', 'deep_focus'};
