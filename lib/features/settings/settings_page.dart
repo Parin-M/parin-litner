@@ -3,6 +3,7 @@ import '../../core/i18n/app_strings.dart';
 import '../../core/models/app_settings.dart';
 import '../../core/services/music_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../about/about_page.dart';
 import '../insights/achievements_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -84,6 +85,10 @@ class _SettingsPageState extends State<SettingsPage> {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AchievementsPage(decks: decks.cast(), settings: widget.settings)));
   }
 
+  Future<void> _openAbout() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutPage()));
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -130,7 +135,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _Section(title: '✨ More', icon: Icons.auto_awesome_outlined, child: Column(children: [
               ListTile(contentPadding: EdgeInsets.zero, leading: const CircleAvatar(child: Icon(Icons.workspace_premium_outlined)), title: const Text('Achievement Center', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Badges, daily challenges and progress'), trailing: const Icon(Icons.chevron_right), onTap: _openAchievements),
               const Divider(height: 1),
-              ListTile(contentPadding: EdgeInsets.zero, leading: const CircleAvatar(child: Icon(Icons.shuffle_rounded)), title: const Text('Smart Study Mix', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('A future-ready home for smart review modes'), trailing: const Icon(Icons.auto_awesome), onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Smart Study Mix is coming soon')))),
+              ListTile(contentPadding: EdgeInsets.zero, leading: const CircleAvatar(child: Icon(Icons.info_outline_rounded)), title: const Text('About', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('About Parin Litner and its creator'), trailing: const Icon(Icons.chevron_right), onTap: _openAbout),
             ])),
           ],
         ),
